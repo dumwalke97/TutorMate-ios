@@ -1,55 +1,82 @@
 import SwiftUI
 import FirebaseAuth
+
 struct CustomNavigationBar: View {
     @ObservedObject var viewModel: TutorMateViewModel
     @ObservedObject var firebaseManager = FirebaseManager.shared
-    @State private var showMenu = false
-    
+
     var body: some View {
-        HStack {
-            Spacer()
-            
+        HStack(spacing: 10) {
+            Button {
+                viewModel.resetApp()
+            } label: {
+                Text("TutorMate")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .tracking(0.3)
+                    .foregroundColor(.white)
+            }
+
+            Spacer(minLength: 8)
+
             if let user = firebaseManager.currentUser {
-                HStack(spacing: 16) {
-                    Text(user.displayName ?? user.email ?? "User")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
-                    
-                    Menu {
-                        Button(action: { viewModel.resetApp() }) {
-                            Label("Home", systemImage: "house")
-                        }
-                        Button(action: { viewModel.showFolders() }) {
-                            Label("My Folders", systemImage: "folder")
-                        }
-                        Button(role: .destructive, action: { viewModel.signOut() }) {
-                            Label("Sign Out", systemImage: "arrow.right.square")
-                        }
-                    } label: {
-                        Image(systemName: "line.3.horizontal")
-                            .foregroundColor(.white)
-                            .padding(8)
+                Text(user.displayName ?? user.email ?? "User")
+                    .font(.footnote)
+                    .fontWeight(.medium)
+                    .foregroundColor(.white.opacity(0.9))
+                    .lineLimit(1)
+
+                Menu {
+                    Button(action: { viewModel.resetApp() }) {
+                        Label("Home", systemImage: "house")
                     }
+                    Button(action: { viewModel.showFolders() }) {
+                        Label("My Folders", systemImage: "folder")
+                    }
+                    Button(role: .destructive, action: { viewModel.signOut() }) {
+                        Label("Sign Out", systemImage: "arrow.right.square")
+                    }
+                } label: {
+                    Image(systemName: "line.3.horizontal")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(7)
+                        .background(Circle().fill(Color.white.opacity(0.16)))
                 }
             } else {
-                HStack(spacing: 8) {
-                    Button("Log In") {
-                        viewModel.showLoginModal = true
-                    }
-                    .foregroundColor(.white)
-                    
-                    Text("|")
+                Button {
+                    viewModel.showLoginModal = true
+                } label: {
+                    Text("Log In")
+                        .font(.footnote)
+                        .fontWeight(.medium)
                         .foregroundColor(.white)
-                    
-                    Button("Sign Up") {
-                        viewModel.showLoginModal = true
-                    }
-                    .foregroundColor(.white)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
                 }
-                .font(.system(size: 14, weight: .medium))
+
+                Button {
+                    viewModel.showLoginModal = true
+                } label: {
+                    Text("Sign Up")
+                        .font(.footnote)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.tmNavy)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 7)
+                        .background(Color.white)
+                        .clipShape(Capsule())
+                }
             }
         }
-        .padding()
-        .background(Color(red: 0.31, green: 0.36, blue: 0.63))
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .background(Color.tmNavy)
+        .clipShape(Capsule())
     }
 }

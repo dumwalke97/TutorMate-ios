@@ -4,18 +4,19 @@ import PhotosUI
 struct ContentView: View {
     @StateObject private var viewModel = TutorMateViewModel()
     @StateObject private var firebaseManager = FirebaseManager.shared
-    
+
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
-                Color(UIColor.systemBackground)
+                Color.tmCanvas
                     .ignoresSafeArea()
-                
+
                 VStack(spacing: 0) {
-                    // Navigation Bar
                     CustomNavigationBar(viewModel: viewModel)
-                    
-                    // Main Content
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .padding(.bottom, 14)
+
                     ScrollView {
                         VStack(spacing: 20) {
                             switch viewModel.currentState {
@@ -37,10 +38,13 @@ struct ContentView: View {
                                 AssignmentResultsView(viewModel: viewModel)
                             }
                         }
-                        .padding()
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 32)
                     }
+                    .scrollIndicators(.hidden)
                 }
             }
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $viewModel.showLoginModal) {
                 LoginView(viewModel: viewModel)
             }
@@ -51,4 +55,17 @@ struct ContentView: View {
             }
         }
     }
+}
+
+extension Color {
+    static let tmNavy = Color(red: 0.11, green: 0.17, blue: 0.38)
+    static let tmNavySoft = Color(red: 0.18, green: 0.24, blue: 0.46)
+    static let tmCanvas = Color(red: 0.96, green: 0.97, blue: 0.98)
+    static let tmCard = Color.white
+    static let tmFieldFill = Color(red: 0.95, green: 0.96, blue: 0.98)
+    static let tmInk = Color(red: 0.07, green: 0.10, blue: 0.20)
+}
+
+#Preview {
+    ContentView()
 }
