@@ -1,72 +1,34 @@
 import SwiftUI
 import FirebaseAuth
+
 struct FoldersListView: View {
     @ObservedObject var viewModel: TutorMateViewModel
     @ObservedObject var firebaseManager = FirebaseManager.shared
     @State private var showNewFolderDialog = false
     @State private var newFolderName = ""
-    
+
     var body: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Button(action: { viewModel.resetApp() }) {
-                    HStack {
-                        Image(systemName: "chevron.left")
-                        Text("Back")
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color(UIColor.systemGray5))
-                    .cornerRadius(8)
-                }
-                
-                Spacer()
-                
-                Text("My Folders")
-                    .font(.system(size: 24, weight: .bold))
-                
-                Spacer()
-                
-                Color.clear.frame(width: 60)
-            }
-            
+        VStack(alignment: .leading, spacing: 18) {
+            header
+
             if firebaseManager.folders.isEmpty {
-                Text("You don't have any folders yet.")
-                    .foregroundColor(.secondary)
-                    .padding()
+                emptyState
             } else {
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 100), spacing: 12)],
+                    spacing: 12
+                ) {
                     ForEach(firebaseManager.folders) { folder in
                         Button(action: { viewModel.openFolder(folder.id) }) {
-                            HStack {
-                                Image(systemName: "folder.fill")
-                                    .font(.system(size: 32))
-                                    .foregroundColor(Color(red: 0.31, green: 0.36, blue: 0.63).opacity(0.7))
-                                
-                                Text(folder.name)
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .lineLimit(2)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color(red: 0.31, green: 0.36, blue: 0.63))
-                            .cornerRadius(12)
+                            folderTile(folder)
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             }
-            
-            Button(action: { showNewFolderDialog = true }) {
-                Text("New Folder")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color(UIColor.systemGray5))
-                    .foregroundColor(.primary)
-                    .cornerRadius(8)
-            }
+
+            newFolderButton
         }
-        .padding()
         .alert("New Folder", isPresented: $showNewFolderDialog) {
             TextField("Folder name", text: $newFolderName)
             Button("Cancel", role: .cancel) { }
@@ -75,11 +37,92 @@ struct FoldersListView: View {
             }
         }
     }
-    
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            Button(action: { viewModel.resetApp() }) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.tmNavy)
+                    .frame(width: 34, height: 34)
+                    .background(Circle().fill(Color.tmFieldFill))
+            }
+
+            Text("My Folders")
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundColor(.tmInk)
+                .lineLimit(1)
+
+            Spacer()
+        }
+    }
+
+    private func folderTile(_ folder: Folder) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: "folder.fill")
+                .font(.system(size: 26))
+                .foregroundColor(.tmNavy)
+
+            Text(folder.name)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(.tmInk)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity)
+        }
+        .padding(.vertical, 18)
+        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity)
+        .background(Color.tmCard)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: Color.tmNavy.opacity(0.05), radius: 10, x: 0, y: 4)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "folder.badge.plus")
+                .font(.system(size: 40))
+                .foregroundColor(.tmNavy.opacity(0.4))
+
+            Text("No folders yet")
+                .font(.headline)
+                .foregroundColor(.tmInk)
+
+            Text("Create a folder to organize your saved quizzes and worksheets.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 36)
+        .frame(maxWidth: .infinity)
+        .background(Color.tmCard)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: Color.tmNavy.opacity(0.05), radius: 12, x: 0, y: 4)
+    }
+
+    private var newFolderButton: some View {
+        Button(action: { showNewFolderDialog = true }) {
+            HStack(spacing: 8) {
+                Image(systemName: "plus")
+                Text("New Folder")
+            }
+            .font(.headline)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .foregroundColor(.white)
+            .background(Color.tmNavy)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+    }
+
     private func createFolder() {
         guard !newFolderName.isEmpty,
               let userId = Auth.auth().currentUser?.uid else { return }
-        
+
         Task {
             try? await FirebaseManager.shared.createFolder(userId: userId, name: newFolderName)
             newFolderName = ""

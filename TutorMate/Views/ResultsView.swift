@@ -1,50 +1,62 @@
 import SwiftUI
+
 struct ResultsView: View {
     @ObservedObject var viewModel: TutorMateViewModel
-    
+
     var body: some View {
-        VStack(spacing: 24) {
-            Text("Quiz Complete!")
-                .font(.system(size: 28, weight: .bold))
-            
-            Text("\(viewModel.score) / \(viewModel.quizData.count)")
-                .font(.system(size: 48, weight: .heavy))
-                .foregroundColor(.blue)
-            
-            Text(viewModel.scoreMessage)
-                .foregroundColor(.secondary)
-            
+        VStack(spacing: 18) {
             VStack(spacing: 12) {
+                Text("Quiz Complete!")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.tmInk)
+
+                Text("\(viewModel.score) / \(viewModel.quizData.count)")
+                    .font(.system(size: 56, weight: .heavy))
+                    .foregroundColor(.tmNavy)
+                    .tracking(-1)
+
+                Text(viewModel.scoreMessage)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.vertical, 28)
+            .padding(.horizontal, 24)
+            .frame(maxWidth: .infinity)
+            .background(Color.tmCard)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .shadow(color: Color.tmNavy.opacity(0.05), radius: 14, x: 0, y: 6)
+
+            VStack(spacing: 10) {
                 Button(action: { viewModel.reviewAnswers() }) {
                     Text("Review Answers")
+                        .font(.headline)
                         .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
+                        .padding(.vertical, 16)
                         .foregroundColor(.white)
-                        .cornerRadius(8)
+                        .background(Color.tmNavy)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
-                
+
                 Button(action: { viewModel.retakeQuiz() }) {
                     Text("Retake Quiz")
+                        .font(.headline)
                         .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color(red: 0.31, green: 0.36, blue: 0.63))
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
+                        .padding(.vertical, 16)
+                        .foregroundColor(.tmNavy)
+                        .background(Color.tmNavy.opacity(0.10))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
-                
+
                 Button(action: { viewModel.resetApp() }) {
                     Text("Start Over")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color(UIColor.systemGray5))
-                        .foregroundColor(.primary)
-                        .cornerRadius(8)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
+                        .padding(.vertical, 10)
                 }
             }
         }
-        .padding(32)
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(16)
     }
 }
