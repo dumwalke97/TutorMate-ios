@@ -39,15 +39,7 @@ struct FoldersListView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 12) {
-            Button(action: { viewModel.resetApp() }) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.tmNavy)
-                    .frame(width: 34, height: 34)
-                    .background(Circle().fill(Color.tmFieldFill))
-            }
-
+        HStack {
             Text("My Folders")
                 .font(.title2)
                 .fontWeight(.bold)

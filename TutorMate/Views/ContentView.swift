@@ -1,57 +1,141 @@
 import SwiftUI
 import PhotosUI
 
+enum AppTab: Hashable {
+    case home
+    case folders
+}
+
 struct ContentView: View {
     @StateObject private var viewModel = TutorMateViewModel()
     @StateObject private var firebaseManager = FirebaseManager.shared
+    @State private var selectedTab: AppTab = .home
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color.tmCanvas
-                    .ignoresSafeArea()
+        ZStack(alignment: .bottom) {
+            Color.tmCanvas
+                .ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    CustomNavigationBar(viewModel: viewModel)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8)
-                        .padding(.bottom, 14)
+            VStack(spacing: 0) {
+                CustomNavigationBar(viewModel: viewModel)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 2)
+                    .padding(.bottom, 4)
 
-                    ScrollView {
-                        VStack(spacing: 20) {
-                            switch viewModel.currentState {
-                            case .upload:
-                                UploadView(viewModel: viewModel)
-                            case .loading:
-                                LoadingView(viewModel: viewModel)
-                            case .quiz:
-                                QuizView(viewModel: viewModel)
-                            case .results:
-                                ResultsView(viewModel: viewModel)
-                            case .review:
-                                ReviewView(viewModel: viewModel)
-                            case .folders:
-                                FoldersListView(viewModel: viewModel)
-                            case .folderContents:
-                                FolderContentsView(viewModel: viewModel)
-                            case .assignmentResults:
-                                AssignmentResultsView(viewModel: viewModel)
-                            }
+                ScrollView {
+                    Group {
+                        switch selectedTab {
+                        case .home:
+                            homeContent
+                        case .folders:
+                            foldersContent
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 32)
                     }
-                    .scrollIndicators(.hidden)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 80)
                 }
+                .scrollIndicators(.hidden)
             }
-            .toolbar(.hidden, for: .navigationBar)
-            .sheet(isPresented: $viewModel.showLoginModal) {
-                LoginView(viewModel: viewModel)
+
+            floatingTabBar
+                .padding(.bottom, 4)
+        }
+        .sheet(isPresented: $viewModel.showLoginModal) {
+            LoginView(viewModel: viewModel)
+        }
+        .alert(viewModel.alertTitle, isPresented: $viewModel.showAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(viewModel.alertMessage)
+        }
+        .onChange(of: viewModel.currentState) { newState in
+            switch newState {
+            case .folders, .folderContents:
+                if selectedTab != .folders { selectedTab = .folders }
+            default:
+                if selectedTab != .home { selectedTab = .home }
             }
-            .alert(viewModel.alertTitle, isPresented: $viewModel.showAlert) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(viewModel.alertMessage)
+        }
+    }
+
+    @ViewBuilder
+    private var homeContent: some View {
+        VStack(spacing: 20) {
+            switch viewModel.currentState {
+            case .loading:
+                LoadingView(viewModel: viewModel)
+            case .quiz:
+                QuizView(viewModel: viewModel)
+            case .results:
+                ResultsView(viewModel: viewModel)
+            case .review:
+                ReviewView(viewModel: viewModel)
+            case .assignmentResults:
+                AssignmentResultsView(viewModel: viewModel)
+            default:
+                UploadView(viewModel: viewModel)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var foldersContent: some View {
+        VStack(spacing: 20) {
+            switch viewModel.currentState {
+            case .folderContents:
+                FolderContentsView(viewModel: viewModel)
+            default:
+                FoldersListView(viewModel: viewModel)
+            }
+        }
+    }
+
+    private var floatingTabBar: some View {
+        HStack(spacing: 4) {
+            tabPill(.home, icon: "house.fill", label: "Home")
+            tabPill(.folders, icon: "folder.fill", label: "Folders")
+        }
+        .padding(4)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(
+            Capsule()
+                .stroke(Color.white.opacity(0.5), lineWidth: 0.5)
+        )
+        .shadow(color: Color.tmInk.opacity(0.12), radius: 14, x: 0, y: 6)
+    }
+
+    private func tabPill(_ tab: AppTab, icon: String, label: String) -> some View {
+        let isSelected = selectedTab == tab
+        return Button {
+            selectTab(tab)
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .semibold))
+                Text(label)
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundColor(isSelected ? .white : .tmNavy)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .background(
+                Capsule().fill(isSelected ? Color.tmNavy : Color.clear)
+            )
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func selectTab(_ tab: AppTab) {
+        selectedTab = tab
+        switch tab {
+        case .home:
+            if viewModel.currentState == .folders || viewModel.currentState == .folderContents {
+                viewModel.currentState = .upload
+            }
+        case .folders:
+            if viewModel.currentState != .folders && viewModel.currentState != .folderContents {
+                viewModel.currentState = .folders
             }
         }
     }

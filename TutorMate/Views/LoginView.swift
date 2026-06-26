@@ -8,22 +8,8 @@ struct LoginView: View {
     @State private var isSignUp = true
 
     var body: some View {
-        ZStack(alignment: .top) {
-            Color.tmCanvas
-                .ignoresSafeArea()
-
+        NavigationStack {
             VStack(spacing: 20) {
-                HStack {
-                    Spacer()
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.tmNavy)
-                            .frame(width: 34, height: 34)
-                            .background(Circle().fill(Color.tmFieldFill))
-                    }
-                }
-
                 VStack(spacing: 6) {
                     Text(isSignUp ? "Create your account" : "Welcome back")
                         .font(.title2)
@@ -39,7 +25,7 @@ struct LoginView: View {
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.top, 4)
+                .padding(.top, 8)
 
                 formCard
 
@@ -57,7 +43,20 @@ struct LoginView: View {
                 Spacer()
             }
             .padding(.horizontal, 20)
-            .padding(.top, 16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background(Color.tmCanvas.ignoresSafeArea())
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .symbolRenderingMode(.hierarchical)
+                            .font(.system(size: 26, weight: .regular))
+                            .foregroundColor(.tmInk.opacity(0.55))
+                    }
+                }
+            }
+            .toolbarBackground(Color.tmCanvas, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
         }
     }
 
