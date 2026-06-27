@@ -1,11 +1,19 @@
 import SwiftUI
+import PhotosUI
 
 struct FolderContentsView: View {
     @ObservedObject var viewModel: TutorMateViewModel
+    @State private var selectedItems: [PhotosPickerItem] = []
+
+    private let questionOptions = [5, 10, 15, 20, 30, 50, 75, 100]
+
+    private var selectedCount: Int { viewModel.selectedItemIds.count }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             header
+
+            uploadButton
 
             if viewModel.folderItems.isEmpty {
                 emptyState
@@ -24,19 +32,8 @@ struct FolderContentsView: View {
                 }
             }
 
-            if !viewModel.selectedItemIds.isEmpty {
-                Button(action: { viewModel.deleteSelectedItems() }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "trash")
-                        Text("Delete \(viewModel.selectedItemIds.count) item\(viewModel.selectedItemIds.count == 1 ? "" : "s")")
-                    }
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .foregroundColor(.white)
-                    .background(Color.red)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
+            if selectedCount > 0 {
+                actionButtons
             }
         }
     }
@@ -45,9 +42,9 @@ struct FolderContentsView: View {
         HStack(spacing: 12) {
             Button(action: { viewModel.currentState = .folders }) {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.tmNavy)
-                    .frame(width: 34, height: 34)
+                    .frame(width: 44, height: 44)
                     .background(Circle().fill(Color.tmFieldFill))
             }
 
@@ -61,6 +58,88 @@ struct FolderContentsView: View {
         }
     }
 
+    private var uploadButton: some View {
+        PhotosPicker(selection: $selectedItems, matching: .images) {
+            HStack(spacing: 8) {
+                Image(systemName: "plus.circle.fill")
+                Text("Add to Folder")
+            }
+            .font(.headline)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .foregroundColor(.white)
+            .background(Color.tmNavy)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .onChange(of: selectedItems) { newItems in
+            viewModel.uploadToCurrentFolder(newItems)
+            selectedItems = []
+        }
+    }
+
+    private var actionButtons: some View {
+        VStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Number of questions")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.tmInk.opacity(0.7))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4),
+                    spacing: 8
+                ) {
+                    ForEach(questionOptions, id: \.self) { count in
+                        questionChip(count)
+                    }
+                }
+            }
+
+            Button(action: { viewModel.generateQuizFromFolder() }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles")
+                    Text("Generate Quiz")
+                }
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .foregroundColor(.white)
+                .background(Color.tmGreen)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+
+            Button(action: { viewModel.deleteSelectedItems() }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "trash")
+                    Text("Delete \(selectedCount) item\(selectedCount == 1 ? "" : "s")")
+                }
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .foregroundColor(.red)
+                .background(Color.red.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+        }
+    }
+
+    private func questionChip(_ count: Int) -> some View {
+        let isSelected = viewModel.questionCount == count
+        return Button {
+            viewModel.questionCount = count
+        } label: {
+            Text("\(count)")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(isSelected ? .white : .tmNavy)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(isSelected ? Color.tmNavy : Color.tmFieldFill)
+                .clipShape(Capsule())
+        }
+    }
+
     private var emptyState: some View {
         VStack(spacing: 10) {
             Image(systemName: "tray")
@@ -71,9 +150,10 @@ struct FolderContentsView: View {
                 .font(.headline)
                 .foregroundColor(.tmInk)
 
-            Text("Items you save will appear here.")
+            Text("Tap \u{201C}Add to Folder\u{201D} to upload your first item.")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 36)
@@ -92,24 +172,34 @@ struct FolderItemView: View {
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: 6) {
-                AsyncImage(url: URL(string: item.url)) { image in
-                    image
-                        .resizable()
-                        .scaledToFill()
-                } placeholder: {
-                    Image(systemName: "doc.fill")
-                        .font(.system(size: 28))
-                        .foregroundColor(.tmNavy.opacity(0.4))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color.tmFieldFill)
+                ZStack(alignment: .topTrailing) {
+                    AsyncImage(url: URL(string: item.url)) { image in
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    } placeholder: {
+                        Image(systemName: "doc.fill")
+                            .font(.system(size: 28))
+                            .foregroundColor(.tmNavy.opacity(0.4))
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(Color.tmFieldFill)
+                    }
+                    .frame(height: 90)
+                    .frame(maxWidth: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(isSelected ? Color.tmNavy : Color.clear, lineWidth: 2.5)
+                    )
+
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.tmNavy)
+                            .background(Circle().fill(Color.white))
+                            .padding(6)
+                    }
                 }
-                .frame(height: 90)
-                .frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(isSelected ? Color.tmNavy : Color.clear, lineWidth: 2.5)
-                )
 
                 Text(formattedDate)
                     .font(.caption)

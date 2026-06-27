@@ -18,9 +18,9 @@ struct ContentView: View {
 
             VStack(spacing: 0) {
                 CustomNavigationBar(viewModel: viewModel)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 2)
-                    .padding(.bottom, 4)
+                    .padding(.horizontal, 18)
+                    .padding(.top, 6)
+                    .padding(.bottom, 10)
 
                 ScrollView {
                     Group {
@@ -130,8 +130,8 @@ struct ContentView: View {
         selectedTab = tab
         switch tab {
         case .home:
-            if viewModel.currentState == .folders || viewModel.currentState == .folderContents {
-                viewModel.currentState = .upload
+            if viewModel.currentState != .upload {
+                viewModel.resetApp()
             }
         case .folders:
             if viewModel.currentState != .folders && viewModel.currentState != .folderContents {
@@ -148,6 +148,7 @@ extension Color {
     static let tmCard = Color.white
     static let tmFieldFill = Color(red: 0.95, green: 0.96, blue: 0.98)
     static let tmInk = Color(red: 0.07, green: 0.10, blue: 0.20)
+    static let tmGreen = Color(red: 0.13, green: 0.62, blue: 0.40)
 }
 
 #Preview {

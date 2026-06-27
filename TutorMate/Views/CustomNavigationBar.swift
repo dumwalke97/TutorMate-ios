@@ -6,14 +6,14 @@ struct CustomNavigationBar: View {
     @ObservedObject var firebaseManager = FirebaseManager.shared
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Button {
                 viewModel.resetApp()
             } label: {
                 Image("TutorMateMark")
                     .resizable()
                     .scaledToFit()
-                    .frame(height: 18)
+                    .frame(height: 24)
             }
             .buttonStyle(.plain)
 
@@ -21,7 +21,7 @@ struct CustomNavigationBar: View {
 
             if let user = firebaseManager.currentUser {
                 Text(user.displayName ?? user.email ?? "User")
-                    .font(.caption2)
+                    .font(.footnote)
                     .fontWeight(.medium)
                     .foregroundColor(.tmInk.opacity(0.55))
                     .lineLimit(1)
@@ -35,9 +35,9 @@ struct CustomNavigationBar: View {
                     }
                 } label: {
                     Image(systemName: "line.3.horizontal")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.tmNavy)
-                        .frame(width: 22, height: 22)
+                        .frame(width: 30, height: 30)
                         .background(Circle().fill(Color.tmFieldFill))
                 }
             } else {
@@ -45,26 +45,26 @@ struct CustomNavigationBar: View {
                     viewModel.showLoginModal = true
                 } label: {
                     Text("Log In")
-                        .font(.caption2)
+                        .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundColor(.tmNavy)
                         .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
                 }
 
                 Button {
                     viewModel.showLoginModal = true
                 } label: {
                     Text("Sign Up")
-                        .font(.caption2)
+                        .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
                         .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 7)
                         .background(Color.tmNavy)
                         .clipShape(Capsule())
                 }

@@ -91,6 +91,37 @@ struct LoginView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
             .padding(.top, 4)
+
+            HStack(spacing: 12) {
+                Rectangle()
+                    .fill(Color.tmInk.opacity(0.12))
+                    .frame(height: 1)
+                Text("or")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                Rectangle()
+                    .fill(Color.tmInk.opacity(0.12))
+                    .frame(height: 1)
+            }
+            .padding(.vertical, 2)
+
+            Button(action: handleGoogleAuth) {
+                HStack(spacing: 10) {
+                    Image(systemName: "g.circle.fill")
+                        .font(.system(size: 18))
+                    Text("Continue with Google")
+                }
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .foregroundColor(.tmInk)
+                .background(Color.tmFieldFill)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.tmInk.opacity(0.10), lineWidth: 1)
+                )
+            }
         }
         .padding(20)
         .frame(maxWidth: .infinity)
@@ -107,6 +138,17 @@ struct LoginView: View {
                 } else {
                     try await FirebaseManager.shared.signInWithEmail(email: email, password: password)
                 }
+                dismiss()
+            } catch {
+                viewModel.showAlertMessage(title: "Error", message: error.localizedDescription)
+            }
+        }
+    }
+
+    private func handleGoogleAuth() {
+        Task {
+            do {
+                try await FirebaseManager.shared.signInWithGoogle()
                 dismiss()
             } catch {
                 viewModel.showAlertMessage(title: "Error", message: error.localizedDescription)

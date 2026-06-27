@@ -7,6 +7,8 @@ struct UploadView: View {
 
     private let questionOptions = [5, 10, 15, 20, 25, 30]
 
+    private var hasImages: Bool { !viewModel.imageDataArray.isEmpty }
+
     var body: some View {
         VStack(spacing: 18) {
             heroOval
@@ -14,43 +16,49 @@ struct UploadView: View {
         }
     }
 
+    // MARK: - Hero
+
     private var heroOval: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text("Learn smarter.")
-                    .font(.title2)
+                    .font(.title)
                     .fontWeight(.bold)
-                    .tracking(-0.2)
+                    .tracking(-0.3)
                     .foregroundColor(.white)
 
                 Text("Snap a worksheet or build a quiz on any topic.")
-                    .font(.footnote)
+                    .font(.subheadline)
                     .foregroundColor(.white.opacity(0.78))
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if !viewModel.imageDataArray.isEmpty {
+            if hasImages {
                 thumbnailStrip
             }
 
             VStack(spacing: 10) {
                 addImagesButton
 
-                if !viewModel.imageDataArray.isEmpty {
-                    Button(action: { viewModel.checkAssignment() }) {
-                        Text("Check Assignment")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 13)
-                            .foregroundColor(.white)
-                            .background(Color.white.opacity(0.14))
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                if hasImages {
+                    HStack(spacing: 10) {
+                        heroActionButton(
+                            title: "Generate Quiz",
+                            icon: "sparkles",
+                            filled: true,
+                            action: { viewModel.generateQuiz() }
+                        )
+                        heroActionButton(
+                            title: "Check Assignment",
+                            icon: "checkmark.circle",
+                            filled: false,
+                            action: { viewModel.checkAssignment() }
+                        )
                     }
                 }
             }
         }
-        .padding(20)
+        .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.tmNavy)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -85,7 +93,7 @@ struct UploadView: View {
         PhotosPicker(selection: $selectedItems, matching: .images) {
             HStack(spacing: 8) {
                 Image(systemName: "camera.fill")
-                Text(viewModel.imageDataArray.isEmpty ? "Add Images / Files" : "Add More Photos")
+                Text(hasImages ? "Add More Photos" : "Add Images / Files")
             }
             .font(.subheadline)
             .fontWeight(.semibold)
@@ -99,6 +107,31 @@ struct UploadView: View {
             viewModel.handleImageSelection(newItems)
         }
     }
+
+    private func heroActionButton(
+        title: String,
+        icon: String,
+        filled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                Text(title)
+            }
+            .font(.footnote)
+            .fontWeight(.semibold)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .foregroundColor(filled ? .tmNavy : .white)
+            .background(filled ? Color.white : Color.white.opacity(0.16))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+    }
+
+    // MARK: - Quiz from a topic
 
     private var quizCard: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -135,13 +168,16 @@ struct UploadView: View {
             }
 
             Button(action: { viewModel.generateQuiz() }) {
-                Text("Generate Quiz")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .foregroundColor(.white)
-                    .background(Color.tmNavy)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles")
+                    Text("Generate Quiz")
+                }
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .foregroundColor(.white)
+                .background(Color.tmNavy)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
         }
         .padding(20)

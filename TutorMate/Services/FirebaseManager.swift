@@ -1,7 +1,10 @@
 import FirebaseAuth
 internal import Combine
+import FirebaseCore
 import FirebaseFirestore
 import FirebaseStorage
+import GoogleSignIn
+import UIKit
 
 class FirebaseManager: ObservableObject {
     
@@ -38,7 +41,61 @@ class FirebaseManager: ObservableObject {
     }
     
     func signOut() throws {
+        GIDSignIn.sharedInstance.signOut()
         try Auth.auth().signOut()
+    }
+
+    @MainActor
+    func signInWithGoogle() async throws {
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            throw NSError(
+                domain: "TutorMate",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Missing Firebase client ID."]
+            )
+        }
+
+        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+
+        guard let presenter = Self.topViewController() else {
+            throw NSError(
+                domain: "TutorMate",
+                code: -2,
+                userInfo: [NSLocalizedDescriptionKey: "Unable to present Google Sign-In."]
+            )
+        }
+
+        let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presenter)
+
+        guard let idToken = result.user.idToken?.tokenString else {
+            throw NSError(
+                domain: "TutorMate",
+                code: -3,
+                userInfo: [NSLocalizedDescriptionKey: "Google Sign-In did not return an ID token."]
+            )
+        }
+
+        let credential = GoogleAuthProvider.credential(
+            withIDToken: idToken,
+            accessToken: result.user.accessToken.tokenString
+        )
+
+        try await Auth.auth().signIn(with: credential)
+    }
+
+    @MainActor
+    static func topViewController() -> UIViewController? {
+        guard let scene = UIApplication.shared.connectedScenes
+                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+              let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
+            return nil
+        }
+
+        var top = root
+        while let presented = top.presentedViewController {
+            top = presented
+        }
+        return top
     }
     
     func loadFolders(userId: String) async {

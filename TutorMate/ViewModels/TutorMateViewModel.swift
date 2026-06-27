@@ -143,24 +143,111 @@ class TutorMateViewModel: ObservableObject {
             }
         }
         
-        let systemPrompt = """
-        You are an expert quiz creator. Your task is to analyze the provided image(s) and/or text to understand the topics and concepts present. Based on this analysis, create a set of multiple-choice questions. The output must be a valid JSON object following this specific schema:
-        {"questions": [{"question": "...", "options": ["...", "...", "...", "..."], "answer": "..."}]}.
-        IMPORTANT: Each question MUST have exactly 4 options. The 'answer' field must exactly match one of the strings in the 'options' array. All text should be plain text, without special formatting like Markdown or LaTeX.
-        
-        STYLE: The questions must be derived directly from the provided content. However, phrase them as standalone questions. Do NOT use phrases like "In the image", "According to the text", or "As shown in the file". Respond ONLY with the JSON object and nothing else.
-        
-        CRITICAL: The 'answer' field is MANDATORY for every question. It must be an exact string match to one of the options provided.
-        """
-        
         return [
             "contents": [
                 ["parts": parts]
             ],
             "systemInstruction": [
-                "parts": [["text": systemPrompt]]
+                "parts": [["text": Self.quizSystemPrompt]]
             ]
         ]
+    }
+
+    static let quizSystemPrompt = """
+    You are an expert quiz creator. Your task is to analyze the provided image(s) and/or text to understand the topics and concepts present. Based on this analysis, create a set of multiple-choice questions. The output must be a valid JSON object following this specific schema:
+    {"questions": [{"question": "...", "options": ["...", "...", "...", "..."], "answer": "..."}]}.
+    IMPORTANT: Each question MUST have exactly 4 options. The 'answer' field must exactly match one of the strings in the 'options' array. All text should be plain text, without special formatting like Markdown or LaTeX.
+
+    STYLE: The questions must be derived directly from the provided content. However, phrase them as standalone questions. Do NOT use phrases like "In the image", "According to the text", or "As shown in the file". Respond ONLY with the JSON object and nothing else.
+
+    CRITICAL: The 'answer' field is MANDATORY for every question. It must be an exact string match to one of the options provided.
+    """
+
+    // MARK: - Folder Quiz & Upload
+
+    func generateQuizFromFolder() {
+        let items = folderItems.filter { selectedItemIds.contains($0.id) }
+        guard !items.isEmpty else {
+            showAlertMessage(title: "Error", message: "Please select at least one item.")
+            return
+        }
+
+        currentState = .loading
+        loadingText = "Generating Quiz..."
+        startProgressBar()
+
+        Task {
+            do {
+                var parts: [[String: Any]] = [
+                    ["text": "Analyze the content of the following image(s). Generate a practice quiz with \(questionCount) questions."]
+                ]
+
+                for item in items {
+                    guard let url = URL(string: item.url) else { continue }
+                    let (data, _) = try await URLSession.shared.data(from: url)
+                    parts.append([
+                        "inlineData": [
+                            "mimeType": item.mimeType,
+                            "data": data.base64EncodedString()
+                        ]
+                    ])
+                }
+
+                let payload: [String: Any] = [
+                    "contents": [["parts": parts]],
+                    "systemInstruction": ["parts": [["text": Self.quizSystemPrompt]]]
+                ]
+
+                let response = try await NetworkManager.shared.generateQuiz(payload: payload)
+
+                var shuffledQuestions = response.questions
+                for i in 0..<shuffledQuestions.count {
+                    shuffledQuestions[i] = QuizQuestion(
+                        question: shuffledQuestions[i].question,
+                        options: shuffledQuestions[i].options.shuffled(),
+                        answer: shuffledQuestions[i].answer
+                    )
+                }
+
+                quizData = shuffledQuestions
+                userAnswers = [:]
+                currentQuestionIndex = 0
+                score = 0
+                selectedItemIds = []
+
+                completeProgressBar()
+                currentState = .quiz
+            } catch {
+                showAlertMessage(title: "Error", message: "Failed to generate quiz: \(error.localizedDescription)")
+                completeProgressBar()
+                currentState = .folderContents
+            }
+        }
+    }
+
+    func uploadToCurrentFolder(_ items: [PhotosPickerItem]) {
+        guard let userId = Auth.auth().currentUser?.uid,
+              let folderId = selectedFolderId else { return }
+
+        Task {
+            for item in items {
+                if let data = try? await item.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data),
+                   let processed = ImageProcessor.resizeImage(image, maxSize: 800, quality: 0.7),
+                   let jpegData = processed.0 {
+                    try? await FirebaseManager.shared.uploadImage(
+                        userId: userId,
+                        folderId: folderId,
+                        imageData: jpegData,
+                        mimeType: "image/jpeg"
+                    )
+                }
+            }
+
+            if let updated = try? await FirebaseManager.shared.getFolderItems(userId: userId, folderId: folderId) {
+                folderItems = updated
+            }
+        }
     }
     
     // MARK: - Quiz Navigation
@@ -294,6 +381,7 @@ class TutorMateViewModel: ObservableObject {
     
     func openFolder(_ folderId: String) {
         selectedFolderId = folderId
+        selectedItemIds = []
         currentState = .loading
         loadingText = "Loading folder..."
         
