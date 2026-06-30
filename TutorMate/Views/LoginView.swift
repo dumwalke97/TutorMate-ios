@@ -131,18 +131,40 @@ struct LoginView: View {
     }
 
     private func handleEmailAuth() {
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard isValidEmail(trimmedEmail) else {
+            viewModel.showAlertMessage(title: "Invalid Email", message: "Please enter a valid email address.")
+            return
+        }
+
+        if isSignUp && password.count < 6 {
+            viewModel.showAlertMessage(title: "Weak Password", message: "Please choose a password with at least 6 characters.")
+            return
+        }
+
         Task {
             do {
                 if isSignUp {
-                    try await FirebaseManager.shared.signUpWithEmail(email: email, password: password)
+                    try await FirebaseManager.shared.signUpWithEmail(email: trimmedEmail, password: password)
+                    dismiss()
+                    viewModel.showAlertMessage(
+                        title: "Verify Your Email",
+                        message: "We sent a verification link to \(trimmedEmail). Please check your inbox to confirm your account."
+                    )
                 } else {
-                    try await FirebaseManager.shared.signInWithEmail(email: email, password: password)
+                    try await FirebaseManager.shared.signInWithEmail(email: trimmedEmail, password: password)
+                    dismiss()
                 }
-                dismiss()
             } catch {
-                viewModel.showAlertMessage(title: "Error", message: error.localizedDescription)
+                viewModel.showAlertMessage(title: "Error", message: FirebaseManager.friendlyAuthError(error))
             }
         }
+    }
+
+    private func isValidEmail(_ email: String) -> Bool {
+        let pattern = "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+        return email.range(of: pattern, options: .regularExpression) != nil
     }
 
     private func handleGoogleAuth() {
@@ -151,7 +173,7 @@ struct LoginView: View {
                 try await FirebaseManager.shared.signInWithGoogle()
                 dismiss()
             } catch {
-                viewModel.showAlertMessage(title: "Error", message: error.localizedDescription)
+                viewModel.showAlertMessage(title: "Error", message: FirebaseManager.friendlyAuthError(error))
             }
         }
     }

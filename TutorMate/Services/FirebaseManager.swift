@@ -36,8 +36,46 @@ class FirebaseManager: ObservableObject {
         try await Auth.auth().signIn(withEmail: email, password: password)
     }
     
+    /// Creates an account and sends a verification email. Firebase rejects
+    /// duplicate emails automatically with `AuthErrorCode.emailAlreadyInUse`.
     func signUpWithEmail(email: String, password: String) async throws {
-        try await Auth.auth().createUser(withEmail: email, password: password)
+        let result = try await Auth.auth().createUser(withEmail: email, password: password)
+        try await result.user.sendEmailVerification()
+    }
+
+    /// Re-sends the verification email to the currently signed-in user.
+    func resendVerificationEmail() async throws {
+        guard let user = Auth.auth().currentUser else { return }
+        try await user.sendEmailVerification()
+    }
+
+    var isEmailVerified: Bool {
+        guard let user = Auth.auth().currentUser else { return false }
+        // Google accounts are pre-verified; email/password accounts need to confirm.
+        return user.isEmailVerified || user.providerData.contains { $0.providerID != "password" }
+    }
+
+    /// Maps Firebase auth errors to friendly, user-facing messages.
+    static func friendlyAuthError(_ error: Error) -> String {
+        let code = AuthErrorCode(rawValue: (error as NSError).code)
+        switch code {
+        case .emailAlreadyInUse:
+            return "An account with this email already exists. Try logging in instead."
+        case .invalidEmail:
+            return "That doesn't look like a valid email address."
+        case .weakPassword:
+            return "Please choose a password with at least 6 characters."
+        case .wrongPassword, .invalidCredential:
+            return "Incorrect email or password. Please try again."
+        case .userNotFound:
+            return "No account found with that email. Try signing up."
+        case .networkError:
+            return "Network error. Please check your connection and try again."
+        case .tooManyRequests:
+            return "Too many attempts. Please wait a moment and try again."
+        default:
+            return error.localizedDescription
+        }
     }
     
     func signOut() throws {
