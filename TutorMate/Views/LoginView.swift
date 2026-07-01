@@ -6,6 +6,8 @@ struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var isSignUp = true
+    @State private var showForgotPassword = false
+    @State private var resetEmail = ""
 
     var body: some View {
         NavigationStack {
@@ -40,6 +42,18 @@ struct LoginView: View {
                     .font(.subheadline)
                 }
 
+                if !isSignUp {
+                    Button {
+                        resetEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+                        showForgotPassword = true
+                    } label: {
+                        Text("Forgot password?")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .underline()
+                    }
+                }
+
                 Spacer()
             }
             .padding(.horizontal, 20)
@@ -57,6 +71,17 @@ struct LoginView: View {
             }
             .toolbarBackground(Color.tmCanvas, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+        }
+        .onAppear { isSignUp = viewModel.authStartAsSignUp }
+        .alert("Reset Password", isPresented: $showForgotPassword) {
+            TextField("Email address", text: $resetEmail)
+                .keyboardType(.emailAddress)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button("Cancel", role: .cancel) { }
+            Button("Send Link") { handleForgotPassword(resetEmail) }
+        } message: {
+            Text("Enter your email and we'll send you a link to reset your password.")
         }
     }
 
@@ -172,6 +197,31 @@ struct LoginView: View {
             do {
                 try await FirebaseManager.shared.signInWithGoogle()
                 dismiss()
+            } catch {
+                viewModel.showAlertMessage(title: "Error", message: FirebaseManager.friendlyAuthError(error))
+            }
+        }
+    }
+
+    private func handleForgotPassword(_ address: String) {
+        let trimmedEmail = address.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard isValidEmail(trimmedEmail) else {
+            viewModel.showAlertMessage(
+                title: "Invalid Email",
+                message: "Please enter a valid email address to receive a reset link."
+            )
+            return
+        }
+
+        Task {
+            do {
+                try await FirebaseManager.shared.sendPasswordReset(email: trimmedEmail)
+                dismiss()
+                viewModel.showAlertMessage(
+                    title: "Check Your Email",
+                    message: "We sent a password reset link to \(trimmedEmail)."
+                )
             } catch {
                 viewModel.showAlertMessage(title: "Error", message: FirebaseManager.friendlyAuthError(error))
             }

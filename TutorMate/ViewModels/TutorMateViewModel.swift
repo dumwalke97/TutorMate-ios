@@ -23,6 +23,7 @@ class TutorMateViewModel: ObservableObject {
     @Published var alertTitle = ""
     @Published var alertMessage = ""
     @Published var showLoginModal = false
+    @Published var authStartAsSignUp = true
     
     // Input
     @Published var customPrompt = ""

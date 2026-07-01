@@ -55,6 +55,25 @@ class FirebaseManager: ObservableObject {
         return user.isEmailVerified || user.providerData.contains { $0.providerID != "password" }
     }
 
+    /// True when the signed-in user has an email/password credential (so they
+    /// can change email / reset password). Google-only users cannot.
+    var isPasswordUser: Bool {
+        Auth.auth().currentUser?.providerData.contains { $0.providerID == "password" } ?? false
+    }
+
+    /// Sends a password reset link to the given email (used from the login screen).
+    func sendPasswordReset(email: String) async throws {
+        try await Auth.auth().sendPasswordReset(withEmail: email)
+    }
+
+    /// Starts an email change for the signed-in user. Firebase sends a
+    /// confirmation link to the NEW address; the email only updates once the
+    /// user clicks it.
+    func updateEmail(to newEmail: String) async throws {
+        guard let user = Auth.auth().currentUser else { return }
+        try await user.sendEmailVerification(beforeUpdatingEmail: newEmail)
+    }
+
     /// Maps Firebase auth errors to friendly, user-facing messages.
     static func friendlyAuthError(_ error: Error) -> String {
         let code = AuthErrorCode(rawValue: (error as NSError).code)
@@ -73,6 +92,8 @@ class FirebaseManager: ObservableObject {
             return "Network error. Please check your connection and try again."
         case .tooManyRequests:
             return "Too many attempts. Please wait a moment and try again."
+        case .requiresRecentLogin:
+            return "For security, please sign out and sign back in, then try again."
         default:
             return error.localizedDescription
         }

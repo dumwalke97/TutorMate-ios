@@ -27,10 +27,11 @@ struct UploadView: View {
                     .tracking(-0.3)
                     .foregroundColor(.white)
 
-                Text("Snap a worksheet or build a quiz on any topic.")
+                Text("Snap an assignment or build a quiz on any topic.")
                     .font(.subheadline)
                     .foregroundColor(.white.opacity(0.78))
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
 
             if hasImages {

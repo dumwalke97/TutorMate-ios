@@ -4,6 +4,8 @@ import FirebaseAuth
 struct CustomNavigationBar: View {
     @ObservedObject var viewModel: TutorMateViewModel
     @ObservedObject var firebaseManager = FirebaseManager.shared
+    @State private var showChangeEmailAlert = false
+    @State private var newEmail = ""
 
     var body: some View {
         HStack(spacing: 8) {
@@ -30,6 +32,14 @@ struct CustomNavigationBar: View {
                     Button(action: { viewModel.resetApp() }) {
                         Label("Home", systemImage: "house")
                     }
+                    if firebaseManager.isPasswordUser {
+                        Button(action: { showChangeEmailAlert = true }) {
+                            Label("Change Email", systemImage: "envelope")
+                        }
+                        Button(action: sendPasswordReset) {
+                            Label("Reset Password", systemImage: "key")
+                        }
+                    }
                     Button(role: .destructive, action: { viewModel.signOut() }) {
                         Label("Sign Out", systemImage: "arrow.right.square")
                     }
@@ -42,6 +52,7 @@ struct CustomNavigationBar: View {
                 }
             } else {
                 Button {
+                    viewModel.authStartAsSignUp = false
                     viewModel.showLoginModal = true
                 } label: {
                     Text("Log In")
@@ -55,6 +66,7 @@ struct CustomNavigationBar: View {
                 }
 
                 Button {
+                    viewModel.authStartAsSignUp = true
                     viewModel.showLoginModal = true
                 } label: {
                     Text("Sign Up")
@@ -68,6 +80,47 @@ struct CustomNavigationBar: View {
                         .background(Color.tmNavy)
                         .clipShape(Capsule())
                 }
+            }
+        }
+        .alert("Change Email", isPresented: $showChangeEmailAlert) {
+            TextField("New email address", text: $newEmail)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button("Cancel", role: .cancel) { newEmail = "" }
+            Button("Send Link") { changeEmail() }
+        } message: {
+            Text("Enter your new email address. We'll send a confirmation link there — your email changes once you click it.")
+        }
+    }
+
+    private func sendPasswordReset() {
+        guard let email = firebaseManager.currentUser?.email else { return }
+        Task {
+            do {
+                try await FirebaseManager.shared.sendPasswordReset(email: email)
+                viewModel.showAlertMessage(
+                    title: "Check Your Email",
+                    message: "We sent a password reset link to \(email)."
+                )
+            } catch {
+                viewModel.showAlertMessage(title: "Error", message: FirebaseManager.friendlyAuthError(error))
+            }
+        }
+    }
+
+    private func changeEmail() {
+        let trimmed = newEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+        newEmail = ""
+        guard !trimmed.isEmpty else { return }
+        Task {
+            do {
+                try await FirebaseManager.shared.updateEmail(to: trimmed)
+                viewModel.showAlertMessage(
+                    title: "Confirm New Email",
+                    message: "We sent a confirmation link to \(trimmed). Your email will update once you click it."
+                )
+            } catch {
+                viewModel.showAlertMessage(title: "Error", message: FirebaseManager.friendlyAuthError(error))
             }
         }
     }
