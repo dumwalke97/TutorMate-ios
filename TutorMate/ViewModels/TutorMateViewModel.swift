@@ -79,6 +79,16 @@ class TutorMateViewModel: ObservableObject {
         }
     }
     
+    /// Adds a single UIImage (from camera or file import).
+    func addImage(_ image: UIImage) {
+        guard let processed = ImageProcessor.resizeImage(image, maxSize: 800, quality: 0.7) else { return }
+        imageDataArray.append(ImageData(
+            id: UUID().uuidString,
+            thumbnailImage: image,
+            apiData: APIImageData(mimeType: "image/jpeg", data: processed.1, text: nil)
+        ))
+    }
+
     func removeImage(at index: Int) {
         guard index < imageDataArray.count else { return }
         imageDataArray.remove(at: index)

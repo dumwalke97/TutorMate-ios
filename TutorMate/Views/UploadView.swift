@@ -4,16 +4,21 @@ import PhotosUI
 struct UploadView: View {
     @ObservedObject var viewModel: TutorMateViewModel
     @State private var selectedItems: [PhotosPickerItem] = []
+    @State private var showSourceDialog = false
+    @State private var showCamera = false
+    @State private var showPhotoPicker = false
+    @State private var showFileImporter = false
 
-    private let questionOptions = [5, 10, 15, 20, 25, 30]
+    private let questionOptions = [5, 10, 20, 30, 40, 50]
 
     private var hasImages: Bool { !viewModel.imageDataArray.isEmpty }
 
     var body: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 32) {
             heroOval
             quizCard
         }
+        .padding(.top, 8)
     }
 
     // MARK: - Hero
@@ -42,6 +47,20 @@ struct UploadView: View {
                 addImagesButton
 
                 if hasImages {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Number of questions")
+                            .font(.footnote)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white.opacity(0.78))
+
+                        HStack(spacing: 8) {
+                            ForEach(questionOptions, id: \.self) { count in
+                                heroQuestionChip(count)
+                            }
+                        }
+                    }
+                    .padding(.top, 4)
+
                     HStack(spacing: 10) {
                         heroActionButton(
                             title: "Generate Quiz",
@@ -91,7 +110,9 @@ struct UploadView: View {
     }
 
     private var addImagesButton: some View {
-        PhotosPicker(selection: $selectedItems, matching: .images) {
+        Button {
+            showSourceDialog = true
+        } label: {
             HStack(spacing: 8) {
                 Image(systemName: "camera.fill")
                 Text(hasImages ? "Add More Photos" : "Add Images / Files")
@@ -104,8 +125,52 @@ struct UploadView: View {
             .background(Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
+        .confirmationDialog("Add Images / Files", isPresented: $showSourceDialog, titleVisibility: .visible) {
+            Button("Take Photo") { showCamera = true }
+            Button("Photo Library") { showPhotoPicker = true }
+            Button("Browse Files") { showFileImporter = true }
+            Button("Cancel", role: .cancel) { }
+        }
+        .photosPicker(isPresented: $showPhotoPicker, selection: $selectedItems, matching: .images)
         .onChange(of: selectedItems) { newItems in
             viewModel.handleImageSelection(newItems)
+            selectedItems = []
+        }
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraPicker { image in
+                viewModel.addImage(image)
+            }
+            .ignoresSafeArea()
+        }
+        .fileImporter(
+            isPresented: $showFileImporter,
+            allowedContentTypes: [.image],
+            allowsMultipleSelection: true
+        ) { result in
+            guard case .success(let urls) = result else { return }
+            for url in urls {
+                let accessed = url.startAccessingSecurityScopedResource()
+                defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+                if let data = try? Data(contentsOf: url), let image = UIImage(data: data) {
+                    viewModel.addImage(image)
+                }
+            }
+        }
+    }
+
+    private func heroQuestionChip(_ count: Int) -> some View {
+        let isSelected = viewModel.questionCount == count
+        return Button {
+            viewModel.questionCount = count
+        } label: {
+            Text("\(count)")
+                .font(.footnote)
+                .fontWeight(.semibold)
+                .foregroundColor(isSelected ? .tmNavy : .white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(isSelected ? Color.white : Color.white.opacity(0.16))
+                .clipShape(Capsule())
         }
     }
 
