@@ -43,6 +43,9 @@ struct ContentView: View {
         .sheet(isPresented: $viewModel.showLoginModal) {
             LoginView(viewModel: viewModel)
         }
+        .sheet(isPresented: $viewModel.showPaywall) {
+            PaywallView(viewModel: viewModel)
+        }
         .alert(viewModel.alertTitle, isPresented: $viewModel.showAlert) {
             Button("OK", role: .cancel) { }
         } message: {

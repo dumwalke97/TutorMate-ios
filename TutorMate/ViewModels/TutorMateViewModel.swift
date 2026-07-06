@@ -24,6 +24,7 @@ class TutorMateViewModel: ObservableObject {
     @Published var alertMessage = ""
     @Published var showLoginModal = false
     @Published var authStartAsSignUp = true
+    @Published var showPaywall = false
     
     // Input
     @Published var customPrompt = ""
@@ -94,14 +95,32 @@ class TutorMateViewModel: ObservableObject {
         imageDataArray.remove(at: index)
     }
     
+    // MARK: - Premium Gating
+
+    /// Subscribers generate freely; everyone else gets `UsageTracker.freeUseLimit`
+    /// lifetime uses across quizzes and assignment checks.
+    private var canGenerate: Bool {
+        StoreManager.shared.isSubscribed || UsageTracker.shared.hasFreeUsesRemaining
+    }
+
+    private func recordGenerationUse() {
+        if !StoreManager.shared.isSubscribed {
+            UsageTracker.shared.recordUse()
+        }
+    }
+
     // MARK: - Quiz Generation
-    
+
     func generateQuiz() {
+        guard canGenerate else {
+            showPaywall = true
+            return
+        }
         guard !imageDataArray.isEmpty || !customPrompt.isEmpty else {
             showAlertMessage(title: "Error", message: "Please upload an image or enter a topic.")
             return
         }
-        
+
         currentState = .loading
         loadingText = "Generating Quiz..."
         startProgressBar()
@@ -125,7 +144,8 @@ class TutorMateViewModel: ObservableObject {
                 userAnswers = [:]
                 currentQuestionIndex = 0
                 score = 0
-                
+
+                recordGenerationUse()
                 completeProgressBar()
                 currentState = .quiz
             } catch {
@@ -177,6 +197,10 @@ class TutorMateViewModel: ObservableObject {
     // MARK: - Folder Quiz & Upload
 
     func generateQuizFromFolder() {
+        guard canGenerate else {
+            showPaywall = true
+            return
+        }
         let items = folderItems.filter { selectedItemIds.contains($0.id) }
         guard !items.isEmpty else {
             showAlertMessage(title: "Error", message: "Please select at least one item.")
@@ -226,6 +250,7 @@ class TutorMateViewModel: ObservableObject {
                 score = 0
                 selectedItemIds = []
 
+                recordGenerationUse()
                 completeProgressBar()
                 currentState = .quiz
             } catch {
@@ -318,6 +343,10 @@ class TutorMateViewModel: ObservableObject {
     // MARK: - Assignment Checking
     
     func checkAssignment() {
+        guard canGenerate else {
+            showPaywall = true
+            return
+        }
         guard !imageDataArray.isEmpty else {
             showAlertMessage(title: "Error", message: "Please upload at least one image.")
             return
@@ -333,6 +362,7 @@ class TutorMateViewModel: ObservableObject {
                 let response = try await NetworkManager.shared.checkAssignment(payload: payload)
                 
                 assignmentFeedback = response
+                recordGenerationUse()
                 completeProgressBar()
                 currentState = .assignmentResults
             } catch {

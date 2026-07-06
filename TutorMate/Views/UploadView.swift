@@ -3,6 +3,8 @@ import PhotosUI
 
 struct UploadView: View {
     @ObservedObject var viewModel: TutorMateViewModel
+    @ObservedObject private var store = StoreManager.shared
+    @ObservedObject private var usage = UsageTracker.shared
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var showSourceDialog = false
     @State private var showCamera = false
@@ -37,6 +39,10 @@ struct UploadView: View {
                     .foregroundColor(.white.opacity(0.78))
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
+            }
+
+            if !store.isSubscribed {
+                freeUsesPill
             }
 
             if hasImages {
@@ -82,6 +88,28 @@ struct UploadView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.tmNavy)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    private var freeUsesPill: some View {
+        Button {
+            viewModel.showPaywall = true
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 11, weight: .semibold))
+                Text(usage.hasFreeUsesRemaining
+                     ? "\(usage.remainingFreeUses) of \(UsageTracker.freeUseLimit) free uses left"
+                     : "Upgrade to Premium")
+            }
+            .font(.caption)
+            .fontWeight(.semibold)
+            .foregroundColor(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(Color.white.opacity(0.16))
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     private var thumbnailStrip: some View {

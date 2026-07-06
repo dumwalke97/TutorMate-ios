@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8D35A9A82FFC35430066D61E /* TutorMate.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 8D35A9A72FFC35430066D61E /* TutorMate.storekit */; };
 		8DBAB73A2FF0570C00041CAF /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 8DBAB7392FF0570C00041CAF /* GoogleSignIn */; };
 		9C6053FA2F2AC6B2007A0858 /* TutorMateApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C6053F92F2AC6B2007A0858 /* TutorMateApp.swift */; };
 		9C6053FE2F2AC6B4007A0858 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9C6053FD2F2AC6B4007A0858 /* Assets.xcassets */; };
@@ -17,6 +18,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		8D35A9A72FFC35430066D61E /* TutorMate.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = TutorMate.storekit; sourceTree = "<group>"; };
 		9C6053F62F2AC6B2007A0858 /* TutorMate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TutorMate.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9C6053F92F2AC6B2007A0858 /* TutorMateApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TutorMateApp.swift; sourceTree = "<group>"; };
 		9C6053FD2F2AC6B4007A0858 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -74,6 +76,7 @@
 				9C6053F92F2AC6B2007A0858 /* TutorMateApp.swift */,
 				9C6053F72F2AC6B2007A0858 /* Products */,
 				9C60542F2F2ACA14007A0858 /* GoogleService-Info.plist */,
+				8D35A9A72FFC35430066D61E /* TutorMate.storekit */,
 			);
 			sourceTree = "<group>";
 		};
@@ -162,6 +165,7 @@
 			files = (
 				9C6053FE2F2AC6B4007A0858 /* Assets.xcassets in Resources */,
 				9C6054302F2ACA14007A0858 /* GoogleService-Info.plist in Resources */,
+				8D35A9A82FFC35430066D61E /* TutorMate.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

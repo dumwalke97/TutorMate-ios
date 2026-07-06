@@ -1,0 +1,77 @@
+{
+  "identifier" : "3B1F4C62-9C1A-4E5D-8A47-2F6E0B7D9A10",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "A7E92D48-5B31-4C8F-9E06-1D4A8F3C7B25",
+      "localizations" : [
+
+      ],
+      "name" : "TutorMate Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "4.95",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "C2D84F1A-6E93-4B07-A5C8-8F1B3E6D0942",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited quizzes and assignment checks",
+              "displayName" : "Premium Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.tutormate.premium.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Premium Monthly",
+          "subscriptionGroupID" : "A7E92D48-5B31-4C8F-9E06-1D4A8F3C7B25",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "49.00",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "E9F03A57-2C48-4D16-B8A9-5D7C1F4E8B63",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited quizzes and assignment checks",
+              "displayName" : "Premium Annual",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.tutormate.premium.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Premium Annual",
+          "subscriptionGroupID" : "A7E92D48-5B31-4C8F-9E06-1D4A8F3C7B25",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

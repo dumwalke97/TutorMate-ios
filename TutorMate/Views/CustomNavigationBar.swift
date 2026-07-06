@@ -66,8 +66,7 @@ struct CustomNavigationBar: View {
                 }
 
                 Button {
-                    viewModel.authStartAsSignUp = true
-                    viewModel.showLoginModal = true
+                    viewModel.showPaywall = true
                 } label: {
                     Text("Sign Up")
                         .font(.subheadline)
