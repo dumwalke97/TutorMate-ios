@@ -31,6 +31,7 @@ struct RootView: View {
             }
         }
         .task {
+            await FirebaseManager.shared.ensureSignedIn()
             try? await Task.sleep(nanoseconds: 1_800_000_000)
             withAnimation(.easeOut(duration: 0.45)) {
                 showSplash = false

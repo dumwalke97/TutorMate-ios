@@ -31,6 +31,14 @@ class FirebaseManager: ObservableObject {
     func signInAnonymously() async throws {
         try await Auth.auth().signInAnonymously()
     }
+
+    /// Every session gets a Firebase user (anonymous if the person hasn't
+    /// signed up) so backend requests always carry a verifiable ID token.
+    func ensureSignedIn() async {
+        if Auth.auth().currentUser == nil {
+            try? await Auth.auth().signInAnonymously()
+        }
+    }
     
     func signInWithEmail(email: String, password: String) async throws {
         try await Auth.auth().signIn(withEmail: email, password: password)
@@ -102,6 +110,8 @@ class FirebaseManager: ObservableObject {
     func signOut() throws {
         GIDSignIn.sharedInstance.signOut()
         try Auth.auth().signOut()
+        // Fall back to an anonymous session so API calls keep working.
+        Task { await ensureSignedIn() }
     }
 
     @MainActor

@@ -1,19 +1,34 @@
 import Foundation
+import FirebaseAuth
 
 class NetworkManager {
     static let shared = NetworkManager()
     private let baseURL = "https://tutormate.ai/.netlify/functions"
-    
+
+    /// Builds a POST request carrying the caller's Firebase ID token so the
+    /// backend can reject requests that don't come from a signed-in app user.
+    private func authorizedRequest(url: URL, payload: [String: Any]) async throws -> URLRequest {
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if Auth.auth().currentUser == nil {
+            try? await Auth.auth().signInAnonymously()
+        }
+        if let user = Auth.auth().currentUser {
+            let token = try await user.getIDToken()
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+        return request
+    }
+
     func generateQuiz(payload: [String: Any]) async throws -> QuizResponse {
         guard let url = URL(string: "\(baseURL)/generate") else {
             throw NetworkError.invalidURL
         }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
-        
+
+        let request = try await authorizedRequest(url: url, payload: payload)
+
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse,
@@ -41,12 +56,9 @@ class NetworkManager {
         guard let url = URL(string: "\(baseURL)/generate") else {
             throw NetworkError.invalidURL
         }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
-        
+
+        let request = try await authorizedRequest(url: url, payload: payload)
+
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse,

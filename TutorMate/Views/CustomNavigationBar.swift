@@ -21,7 +21,9 @@ struct CustomNavigationBar: View {
 
             Spacer(minLength: 6)
 
-            if let user = firebaseManager.currentUser {
+            // Anonymous sessions exist only to authenticate API calls; the
+            // UI treats them as logged out.
+            if let user = firebaseManager.currentUser, !user.isAnonymous {
                 Text(user.displayName ?? user.email ?? "User")
                     .font(.footnote)
                     .fontWeight(.medium)
