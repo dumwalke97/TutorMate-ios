@@ -1,3 +1,5 @@
+import AuthenticationServices
+import CryptoKit
 import FirebaseAuth
 internal import Combine
 import FirebaseCore
@@ -150,6 +152,99 @@ class FirebaseManager: ObservableObject {
         )
 
         try await Auth.auth().signIn(with: credential)
+    }
+
+    // MARK: - Sign in with Apple
+
+    /// Requires the Sign in with Apple capability, which personal (free)
+    /// development teams can't use. Flip to true after enrolling in the
+    /// Apple Developer Program, adding the capability to the TutorMate
+    /// target, and enabling the Apple provider in Firebase Authentication.
+    static let appleSignInEnabled = false
+
+    /// Raw nonce for the in-flight Apple sign-in request; Firebase compares
+    /// it against the hashed nonce inside Apple's identity token to block
+    /// replayed credentials.
+    private var currentAppleNonce: String?
+
+    /// Configures an Apple ID request with the scopes and hashed nonce.
+    func prepareAppleSignInRequest(_ request: ASAuthorizationAppleIDRequest) {
+        let nonce = Self.randomNonceString()
+        currentAppleNonce = nonce
+        request.requestedScopes = [.fullName, .email]
+        request.nonce = Self.sha256(nonce)
+    }
+
+    /// Completes Firebase sign-in from a successful Apple authorization.
+    func signInWithApple(authorization: ASAuthorization) async throws {
+        guard let appleCredential = authorization.credential as? ASAuthorizationAppleIDCredential,
+              let tokenData = appleCredential.identityToken,
+              let idToken = String(data: tokenData, encoding: .utf8),
+              let nonce = currentAppleNonce else {
+            throw NSError(
+                domain: "TutorMate",
+                code: -4,
+                userInfo: [NSLocalizedDescriptionKey: "Apple Sign-In did not return valid credentials."]
+            )
+        }
+        currentAppleNonce = nil
+
+        let credential = OAuthProvider.appleCredential(
+            withIDToken: idToken,
+            rawNonce: nonce,
+            fullName: appleCredential.fullName
+        )
+        try await Auth.auth().signIn(with: credential)
+    }
+
+    private static func randomNonceString(length: Int = 32) -> String {
+        var bytes = [UInt8](repeating: 0, count: length)
+        let status = SecRandomCopyBytes(kSecRandomDefault, length, &bytes)
+        precondition(status == errSecSuccess, "Unable to generate a secure nonce.")
+        let charset = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._")
+        return String(bytes.map { charset[Int($0) % charset.count] })
+    }
+
+    private static func sha256(_ input: String) -> String {
+        SHA256.hash(data: Data(input.utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
+    }
+
+    // MARK: - Account Deletion
+
+    /// Permanently deletes the signed-in user's data and account, in this
+    /// order: folder items -> folders -> user document -> uploaded images ->
+    /// Auth user. The Auth user goes last because the security rules need a
+    /// signed-in user to authorize the data deletions. Throws
+    /// `requiresRecentLogin` if the session is too old to delete the account.
+    func deleteAccount() async throws {
+        guard let user = Auth.auth().currentUser else { return }
+        let userId = user.uid
+
+        let userDoc = db.collection("users").document(userId)
+        let folderDocs = try await userDoc.collection("folders").getDocuments()
+        for folderDoc in folderDocs.documents {
+            let itemDocs = try await folderDoc.reference.collection("items").getDocuments()
+            for itemDoc in itemDocs.documents {
+                try await itemDoc.reference.delete()
+            }
+            try await folderDoc.reference.delete()
+        }
+        try await userDoc.delete()
+
+        let uploadsRef = storage.reference().child("users/\(userId)/uploads")
+        if let listing = try? await uploadsRef.listAll() {
+            for item in listing.items {
+                try? await item.delete()
+            }
+        }
+
+        try await user.delete()
+
+        GIDSignIn.sharedInstance.signOut()
+        folders = []
+        await ensureSignedIn()
     }
 
     @MainActor

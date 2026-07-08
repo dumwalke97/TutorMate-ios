@@ -27,6 +27,7 @@ struct PaywallView: View {
                     featureList
                     planCards
                     subscribeButton
+                    cancelAnytimeNote
                     restoreButton
                     finePrint
                 }
@@ -232,6 +233,19 @@ struct PaywallView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .disabled(isPurchasing || store.products.isEmpty)
+    }
+
+    private var cancelAnytimeNote: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "checkmark.shield")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.tmGreen)
+            Text("No commitment — cancel anytime.")
+                .font(.footnote)
+                .fontWeight(.medium)
+                .foregroundColor(.secondary)
+        }
+        .padding(.top, -12)
     }
 
     private var restoreButton: some View {

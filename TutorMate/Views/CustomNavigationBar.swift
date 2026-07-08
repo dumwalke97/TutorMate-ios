@@ -1,11 +1,16 @@
 import SwiftUI
 import FirebaseAuth
+import StoreKit
 
 struct CustomNavigationBar: View {
     @ObservedObject var viewModel: TutorMateViewModel
     @ObservedObject var firebaseManager = FirebaseManager.shared
+    @ObservedObject var store = StoreManager.shared
     @State private var showChangeEmailAlert = false
     @State private var newEmail = ""
+    @State private var showManageSubscriptions = false
+    @State private var showDeleteAccountAlert = false
+    @State private var isDeletingAccount = false
 
     var body: some View {
         HStack(spacing: 8) {
@@ -42,8 +47,17 @@ struct CustomNavigationBar: View {
                             Label("Reset Password", systemImage: "key")
                         }
                     }
+                    if store.isSubscribed {
+                        Button(action: { showManageSubscriptions = true }) {
+                            Label("Subscription", systemImage: "creditcard")
+                        }
+                    }
+                    Divider()
                     Button(role: .destructive, action: { viewModel.signOut() }) {
                         Label("Sign Out", systemImage: "arrow.right.square")
+                    }
+                    Button(role: .destructive, action: { showDeleteAccountAlert = true }) {
+                        Label("Delete Account", systemImage: "trash")
                     }
                 } label: {
                     Image(systemName: "line.3.horizontal")
@@ -81,8 +95,32 @@ struct CustomNavigationBar: View {
                         .background(Color.tmNavy)
                         .clipShape(Capsule())
                 }
+
+                // Subscriptions belong to the Apple Account, not the app
+                // login, so subscribers need this menu even when logged out.
+                if store.isSubscribed {
+                    Menu {
+                        Button(action: { showManageSubscriptions = true }) {
+                            Label("Subscription", systemImage: "creditcard")
+                        }
+                    } label: {
+                        Image(systemName: "line.3.horizontal")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.tmNavy)
+                            .frame(width: 30, height: 30)
+                            .background(Circle().fill(Color.tmFieldFill))
+                    }
+                }
             }
         }
+        .manageSubscriptionsSheet(isPresented: $showManageSubscriptions)
+        .alert("Delete Account?", isPresented: $showDeleteAccountAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete Account", role: .destructive) { deleteAccount() }
+        } message: {
+            Text("This permanently deletes your account, folders, and uploaded images. It cannot be undone.\n\nNote: an active subscription is not canceled by deleting your account — manage it in Settings > Apple Account > Subscriptions.")
+        }
+        .disabled(isDeletingAccount)
         .alert("Change Email", isPresented: $showChangeEmailAlert) {
             TextField("New email address", text: $newEmail)
                 .textInputAutocapitalization(.never)
@@ -91,6 +129,24 @@ struct CustomNavigationBar: View {
             Button("Send Link") { changeEmail() }
         } message: {
             Text("Enter your new email address. We'll send a confirmation link there — your email changes once you click it.")
+        }
+    }
+
+    private func deleteAccount() {
+        isDeletingAccount = true
+        Task {
+            do {
+                try await FirebaseManager.shared.deleteAccount()
+                isDeletingAccount = false
+                viewModel.resetApp()
+                viewModel.showAlertMessage(
+                    title: "Account Deleted",
+                    message: "Your account and all associated data have been deleted."
+                )
+            } catch {
+                isDeletingAccount = false
+                viewModel.showAlertMessage(title: "Error", message: FirebaseManager.friendlyAuthError(error))
+            }
         }
     }
 

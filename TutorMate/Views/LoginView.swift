@@ -1,4 +1,5 @@
 import SwiftUI
+import AuthenticationServices
 
 struct LoginView: View {
     @ObservedObject var viewModel: TutorMateViewModel
@@ -147,6 +148,17 @@ struct LoginView: View {
                         .stroke(Color.tmInk.opacity(0.10), lineWidth: 1)
                 )
             }
+
+            if FirebaseManager.appleSignInEnabled {
+                SignInWithAppleButton(isSignUp ? .signUp : .signIn) { request in
+                    FirebaseManager.shared.prepareAppleSignInRequest(request)
+                } onCompletion: { result in
+                    handleAppleAuth(result)
+                }
+                .signInWithAppleButtonStyle(.black)
+                .frame(height: 52)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
         }
         .padding(20)
         .frame(maxWidth: .infinity)
@@ -190,6 +202,24 @@ struct LoginView: View {
     private func isValidEmail(_ email: String) -> Bool {
         let pattern = "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
         return email.range(of: pattern, options: .regularExpression) != nil
+    }
+
+    private func handleAppleAuth(_ result: Result<ASAuthorization, Error>) {
+        Task {
+            do {
+                switch result {
+                case .success(let authorization):
+                    try await FirebaseManager.shared.signInWithApple(authorization: authorization)
+                    dismiss()
+                case .failure(let error):
+                    // Tapping outside the Apple sheet is a cancel, not an error.
+                    if (error as? ASAuthorizationError)?.code == .canceled { return }
+                    throw error
+                }
+            } catch {
+                viewModel.showAlertMessage(title: "Error", message: FirebaseManager.friendlyAuthError(error))
+            }
+        }
     }
 
     private func handleGoogleAuth() {
