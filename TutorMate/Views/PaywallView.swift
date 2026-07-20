@@ -54,12 +54,37 @@ struct PaywallView: View {
             LoginView(viewModel: viewModel)
         }
         .onChange(of: firebaseManager.currentUser?.uid) { _ in
+            // A grandfathered account already has lifetime access - never
+            // route it into a purchase.
+            if firebaseManager.isGrandfathered {
+                pendingPurchase = false
+                showAccountSheet = false
+                dismiss()
+                return
+            }
             // Continue the purchase automatically once the user finishes
-            // creating an account.
+            // creating an account - but first check Firestore for a
+            // subscription bought on the website (or another Apple Account),
+            // so nobody is ever charged twice for the same login.
             if pendingPurchase && !needsAccount {
                 pendingPurchase = false
                 showAccountSheet = false
-                startPurchase()
+                Task {
+                    if await firebaseManager.refreshRemoteSubscription() {
+                        dismiss()
+                    } else {
+                        startPurchase()
+                    }
+                }
+            }
+        }
+        .onChange(of: firebaseManager.hasRemoteSubscription) { active in
+            // The Firestore listener found an active subscription from the
+            // other platform - there's nothing to sell.
+            if active {
+                pendingPurchase = false
+                showAccountSheet = false
+                dismiss()
             }
         }
         .alert(

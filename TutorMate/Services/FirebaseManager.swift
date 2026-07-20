@@ -15,19 +15,94 @@ class FirebaseManager: ObservableObject {
     
     @Published var currentUser: User?
     @Published var folders: [Folder] = []
-    
+    /// True when the signed-in user has an active subscription that this
+    /// device's StoreKit can't see: purchased on the website via Stripe
+    /// (`subscriptionStatus`, written by the Stripe webhook with admin
+    /// credentials) or on another Apple Account (`appleSubscriptionStatus`,
+    /// written by the iOS app). Both platforms share logins, so honoring
+    /// these here means nobody pays twice.
+    @Published var hasRemoteSubscription = false
+
     private let db = Firestore.firestore()
     private let storage = Storage.storage()
-    
+    private var userDocListener: ListenerRegistration?
+
     init() {
         Auth.auth().addStateDidChangeListener { [weak self] _, user in
             self?.currentUser = user
+            self?.watchUserDocument(userId: user?.uid)
             if let userId = user?.uid {
                 Task {
                     await self?.loadFolders(userId: userId)
                 }
             }
         }
+    }
+
+    /// Last `appleSubscriptionStatus` seen in users/{uid}. Lets
+    /// `updateAppleSubscriptionStatus` skip redundant writes and avoid
+    /// creating docs for users who never subscribed.
+    private var appleStatusInDoc: String?
+
+    private func watchUserDocument(userId: String?) {
+        userDocListener?.remove()
+        userDocListener = nil
+        hasRemoteSubscription = false
+        appleStatusInDoc = nil
+        guard let userId else { return }
+        userDocListener = db.collection("users").document(userId)
+            .addSnapshotListener { [weak self] snapshot, _ in
+                guard let self else { return }
+                let data = snapshot?.data()
+                let status = data?["subscriptionStatus"] as? String
+                let appleStatus = data?["appleSubscriptionStatus"] as? String
+                self.hasRemoteSubscription = (status == "active" || appleStatus == "active")
+
+                let changed = appleStatus != self.appleStatusInDoc
+                self.appleStatusInDoc = appleStatus
+                // Doc and this device disagree about the Apple subscription
+                // (login on a new device, or a lapse recorded elsewhere):
+                // re-verify entitlements, which rewrites the field from
+                // fresh StoreKit truth via updateAppleSubscriptionStatus.
+                if changed, (appleStatus == "active") != StoreManager.shared.isSubscribed {
+                    Task { await StoreManager.shared.refreshSubscriptionStatus() }
+                }
+            }
+    }
+
+    /// Mirrors the on-device StoreKit entitlement to users/{uid} so the web
+    /// app honors an Apple subscription under the same login. Writes only
+    /// `appleSubscriptionStatus` — never `subscriptionStatus`, which belongs
+    /// to the Stripe webhook — so the two purchase paths can't clobber each
+    /// other. `canDowngrade` is true only when this Apple Account actually
+    /// held the subscription at some point, so a second device signed into
+    /// the same TutorMate account (but a different Apple Account) can never
+    /// wipe a live subscription.
+    func updateAppleSubscriptionStatus(isActive: Bool, canDowngrade: Bool) async {
+        guard let user = Auth.auth().currentUser, !user.isAnonymous else { return }
+        let desired: String
+        if isActive {
+            desired = "active"
+        } else if canDowngrade && appleStatusInDoc == "active" {
+            desired = "expired"
+        } else {
+            return
+        }
+        guard desired != appleStatusInDoc else { return }
+        _ = try? await db.collection("users").document(user.uid)
+            .setData(["appleSubscriptionStatus": desired], merge: true)
+    }
+
+    /// One-shot fetch used where a decision can't wait for the listener
+    /// (e.g. right after login on the paywall, before charging via Apple).
+    func refreshRemoteSubscription() async -> Bool {
+        guard let userId = Auth.auth().currentUser?.uid else { return false }
+        let snapshot = try? await db.collection("users").document(userId).getDocument()
+        let data = snapshot?.data()
+        let active = (data?["subscriptionStatus"] as? String) == "active"
+            || (data?["appleSubscriptionStatus"] as? String) == "active"
+        await MainActor.run { hasRemoteSubscription = active }
+        return active
     }
     
     func signInAnonymously() async throws {
@@ -152,6 +227,44 @@ class FirebaseManager: ObservableObject {
         )
 
         try await Auth.auth().signIn(with: credential)
+    }
+
+    // MARK: - Grandfathered Accounts
+
+    /// Firebase UIDs with lifetime premium access, mirroring the accounts
+    /// grandfathered on the web app. UIDs are opaque identifiers, so no
+    /// personal information ships in the binary. Adding accounts requires
+    /// an app update; move this to a client-read-only Firestore collection
+    /// if the list ever needs to grow dynamically.
+    private static let grandfatheredUIDs: Set<String> = [
+        "I43M0gg1KdP78yrRFYnd1rwGcZf2",
+        "JjAYvBDhVESEvdZwSmIFuQ64jww2",
+        "knSCADcrl8SGCWBLB7OLAGfyyO32",
+        "oaQ8et7ELHgpiPayiP3y41OsePr1",
+        "4Rw9LRuV6NPriwoUMUB852IhmT03",
+        "RGHeg0WvApSyRwtZsp1UkDNuUTz1",
+        "2ExBlXLnl2VP0IFY5G4IXZGMACy1",
+        "B5N6c9j5C1RK62iTdjSdc5eU8xz2",
+        "S6Lf3Duy8rf5HRgVcGnTEG3L2fk1",
+        "XMdyskpAa6aFiwnmi98IN4ilq243",
+        "LsNDAOm4vdcqsooqzb8BT4US0uz1",
+        "uvniRVDIlfRjTEguEP89Uu1osIH2",
+        "06Xn8LkbQVYAJuyjQocrrE1ibD03",
+        "OEOnj7oDbXdeDGGQaMtjrcePrR73",
+        "dhdE51cqlhWIZXfvwIfpbDJRCJE3",
+        "q5L6JUFOqWSKSmazkP0I928BNkk1",
+        "FLFGMwQ1t5ZhP8nZnJGf8vylyG42",
+        "z1AwAdMQLYXC6jryQEg9NHaV8Qv2",
+        "CScvhIplvbOY1x1wvY5kL296V3C2",
+        "W5w8Zas5Z3WVDumlkXAhp6beHJZ2",
+        "nUDE3qid4IXh6mcl2uIl7cOCfsi2",
+        "pEUkmcvLund8RhCTvRzSrlTdAxn2"
+    ]
+
+    /// True when the signed-in (non-anonymous) user has lifetime access.
+    var isGrandfathered: Bool {
+        guard let user = Auth.auth().currentUser, !user.isAnonymous else { return false }
+        return Self.grandfatheredUIDs.contains(user.uid)
     }
 
     // MARK: - Sign in with Apple

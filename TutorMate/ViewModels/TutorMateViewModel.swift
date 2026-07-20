@@ -97,14 +97,22 @@ class TutorMateViewModel: ObservableObject {
     
     // MARK: - Premium Gating
 
-    /// Subscribers generate freely; everyone else gets `UsageTracker.freeUseLimit`
-    /// lifetime uses across quizzes and assignment checks.
+    /// Subscribers (via Apple, or via Stripe on the website under the same
+    /// login) and grandfathered accounts generate freely; everyone else gets
+    /// `UsageTracker.freeUseLimit` lifetime uses across quizzes and
+    /// assignment checks.
+    private var hasPremiumAccess: Bool {
+        StoreManager.shared.isSubscribed
+            || FirebaseManager.shared.hasRemoteSubscription
+            || FirebaseManager.shared.isGrandfathered
+    }
+
     private var canGenerate: Bool {
-        StoreManager.shared.isSubscribed || UsageTracker.shared.hasFreeUsesRemaining
+        hasPremiumAccess || UsageTracker.shared.hasFreeUsesRemaining
     }
 
     private func recordGenerationUse() {
-        if !StoreManager.shared.isSubscribed {
+        if !hasPremiumAccess {
             UsageTracker.shared.recordUse()
         }
     }

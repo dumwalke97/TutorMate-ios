@@ -112,6 +112,24 @@ final class StoreManager: ObservableObject {
         }
         let value = active
         await MainActor.run { isSubscribed = value }
+
+        // Mirror the entitlement to Firestore so the website honors an
+        // Apple subscription under the same login. A downgrade ("expired")
+        // is only allowed when this Apple Account has a transaction history
+        // for the subscription — see updateAppleSubscriptionStatus.
+        var canDowngrade = false
+        if !active {
+            for id in Self.productIDs {
+                if await Transaction.latest(for: id) != nil {
+                    canDowngrade = true
+                    break
+                }
+            }
+        }
+        await FirebaseManager.shared.updateAppleSubscriptionStatus(
+            isActive: value,
+            canDowngrade: canDowngrade
+        )
     }
 
     /// Only accept transactions whose StoreKit signature checks out.

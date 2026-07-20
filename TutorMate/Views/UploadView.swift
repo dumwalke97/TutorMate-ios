@@ -5,6 +5,7 @@ struct UploadView: View {
     @ObservedObject var viewModel: TutorMateViewModel
     @ObservedObject private var store = StoreManager.shared
     @ObservedObject private var usage = UsageTracker.shared
+    @ObservedObject private var firebaseManager = FirebaseManager.shared
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var showSourceDialog = false
     @State private var showCamera = false
@@ -41,7 +42,9 @@ struct UploadView: View {
                     .minimumScaleFactor(0.75)
             }
 
-            if !store.isSubscribed {
+            if !store.isSubscribed
+                && !firebaseManager.hasRemoteSubscription
+                && !firebaseManager.isGrandfathered {
                 freeUsesPill
             }
 
