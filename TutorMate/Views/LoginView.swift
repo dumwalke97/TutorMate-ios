@@ -158,6 +158,9 @@ struct LoginView: View {
                 .signInWithAppleButtonStyle(.black)
                 .frame(height: 52)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                // Recreate the button when toggling sign up / log in;
+                // ASAuthorizationAppleIDButton doesn't update its label in place.
+                .id(isSignUp)
             }
         }
         .padding(20)

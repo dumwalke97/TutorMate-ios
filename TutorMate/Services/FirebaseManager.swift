@@ -269,11 +269,9 @@ class FirebaseManager: ObservableObject {
 
     // MARK: - Sign in with Apple
 
-    /// Requires the Sign in with Apple capability, which personal (free)
-    /// development teams can't use. Flip to true after enrolling in the
-    /// Apple Developer Program, adding the capability to the TutorMate
-    /// target, and enabling the Apple provider in Firebase Authentication.
-    static let appleSignInEnabled = false
+    /// Requires the Sign in with Apple capability on the TutorMate target
+    /// and the Apple provider enabled in Firebase Authentication.
+    static let appleSignInEnabled = true
 
     /// Raw nonce for the in-flight Apple sign-in request; Firebase compares
     /// it against the hashed nonce inside Apple's identity token to block
