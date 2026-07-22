@@ -399,12 +399,17 @@ class TutorMateViewModel: ObservableObject {
         let systemPrompt = """
         You are a helpful and encouraging tutor. Your task is to analyze the provided image(s) and/or text content. For each distinct question or topic you identify, provide a detailed analysis.
         
-        Format your response using Markdown. For each question, create a single list item that contains the question, the student's visible answer, the correct answer, and an explanation.
-        
+        Format your response using Markdown. For each question, output the following lines, then a blank line before the next question:
+        **Question:** the question text
+        **Student's Answer:** the student's visible answer, prefixed with exactly [CORRECT] if it is right or [INCORRECT] if it is wrong (e.g. **Student's Answer:** [CORRECT] 42)
+        **Correct Answer:** the correct answer
+        **Explanation:** a concise explanation
+
         CRITICAL RULES:
         1. Do NOT use any special formatting characters for math, like '$'.
-        2. Respond ONLY with plain text and Markdown lists.
+        2. Respond ONLY with plain text and Markdown.
         3. Keep explanations concise and clear.
+        4. Every Student's Answer line MUST include the [CORRECT] or [INCORRECT] tag immediately before the answer. If no answer is visible, write [INCORRECT] No answer provided.
         """
         
         return [

@@ -24,12 +24,13 @@ struct AssignmentResultsView: View {
             }
 
             VStack(alignment: .leading, spacing: 12) {
-                Text(.init(viewModel.assignmentFeedback))
-                    .font(.body)
-                    .foregroundColor(.tmInk)
-                    .lineSpacing(4)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
+                ForEach(Array(feedbackLines.enumerated()), id: \.offset) { _, line in
+                    feedbackText(for: line)
+                        .font(.body)
+                        .lineSpacing(4)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -47,5 +48,30 @@ struct AssignmentResultsView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
         }
+    }
+
+    private var feedbackLines: [String] {
+        viewModel.assignmentFeedback
+            .components(separatedBy: .newlines)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
+
+    /// Colors the student's answer green or red based on the [CORRECT]/[INCORRECT]
+    /// tag the model was instructed to include, stripping the tag from display.
+    private func feedbackText(for line: String) -> Text {
+        if let range = line.range(of: "[CORRECT]") {
+            return coloredAnswerText(line: line, tagRange: range, color: .green)
+        }
+        if let range = line.range(of: "[INCORRECT]") {
+            return coloredAnswerText(line: line, tagRange: range, color: .red)
+        }
+        return Text(.init(line)).foregroundColor(.tmInk)
+    }
+
+    private func coloredAnswerText(line: String, tagRange: Range<String.Index>, color: Color) -> Text {
+        let label = String(line[..<tagRange.lowerBound])
+        let answer = line[tagRange.upperBound...].trimmingCharacters(in: .whitespaces)
+        let answerText = Text(.init(answer)).foregroundColor(color).fontWeight(.semibold)
+        return Text("\(Text(.init(label)).foregroundColor(.tmInk))\(answerText)")
     }
 }
