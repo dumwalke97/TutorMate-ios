@@ -316,10 +316,15 @@ struct PaywallView: View {
         isPurchasing = true
         Task {
             do {
-                let success = try await store.purchase(product)
+                let outcome = try await store.purchase(product)
                 isPurchasing = false
-                if success {
+                switch outcome {
+                case .success:
                     dismiss()
+                case .userCancelled:
+                    break
+                case .pending:
+                    errorMessage = "Your purchase is awaiting approval. You'll gain access as soon as it's confirmed — no need to try again."
                 }
             } catch {
                 isPurchasing = false

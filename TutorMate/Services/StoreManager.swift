@@ -74,22 +74,36 @@ final class StoreManager: ObservableObject {
         }
     }
 
-    /// Purchases the given product. Returns true when the purchase completed
-    /// and the user is now subscribed (false for cancellation or a pending
-    /// Ask to Buy approval).
+    enum PurchaseOutcome {
+        case success
+        case userCancelled
+        case pending
+    }
+
+    /// Purchases the given product.
     @MainActor
-    func purchase(_ product: Product) async throws -> Bool {
+    func purchase(_ product: Product) async throws -> PurchaseOutcome {
         let result = try await product.purchase()
         switch result {
         case .success(let verification):
             let transaction = try verified(verification)
             await transaction.finish()
             await refreshSubscriptionStatus()
-            return isSubscribed
-        case .userCancelled, .pending:
-            return false
+            // `Transaction.currentEntitlements` can lag by a moment right
+            // after a purchase on-device; trust the transaction we just
+            // verified directly rather than depending solely on that re-query.
+            if !isSubscribed,
+               transaction.revocationDate == nil,
+               Self.productIDs.contains(transaction.productID) {
+                isSubscribed = true
+            }
+            return .success
+        case .userCancelled:
+            return .userCancelled
+        case .pending:
+            return .pending
         @unknown default:
-            return false
+            return .userCancelled
         }
     }
 

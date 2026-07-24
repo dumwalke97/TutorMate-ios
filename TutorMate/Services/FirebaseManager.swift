@@ -27,15 +27,39 @@ class FirebaseManager: ObservableObject {
     private let storage = Storage.storage()
     private var userDocListener: ListenerRegistration?
 
+    /// Firebase restores a persisted session from Keychain asynchronously,
+    /// so `Auth.auth().currentUser` can read `nil` for a brief moment after
+    /// launch even when a real session exists. `ensureSignedIn()` waits for
+    /// this listener's first callback before deciding whether to create an
+    /// anonymous session, so it never clobbers a real one mid-restore.
+    private var authRestored = false
+    private var authRestoredContinuations: [CheckedContinuation<Void, Never>] = []
+
     init() {
         Auth.auth().addStateDidChangeListener { [weak self] _, user in
-            self?.currentUser = user
-            self?.watchUserDocument(userId: user?.uid)
+            guard let self else { return }
+            self.currentUser = user
+            self.watchUserDocument(userId: user?.uid)
             if let userId = user?.uid {
                 Task {
-                    await self?.loadFolders(userId: userId)
+                    await self.loadFolders(userId: userId)
                 }
             }
+            if !self.authRestored {
+                self.authRestored = true
+                let waiting = self.authRestoredContinuations
+                self.authRestoredContinuations = []
+                waiting.forEach { $0.resume() }
+            }
+        }
+    }
+
+    /// Suspends until Firebase's first auth-state callback has fired, i.e.
+    /// until any persisted session has had a chance to be restored.
+    private func waitForAuthRestore() async {
+        if authRestored { return }
+        await withCheckedContinuation { continuation in
+            authRestoredContinuations.append(continuation)
         }
     }
 
@@ -112,6 +136,7 @@ class FirebaseManager: ObservableObject {
     /// Every session gets a Firebase user (anonymous if the person hasn't
     /// signed up) so backend requests always carry a verifiable ID token.
     func ensureSignedIn() async {
+        await waitForAuthRestore()
         if Auth.auth().currentUser == nil {
             try? await Auth.auth().signInAnonymously()
         }
