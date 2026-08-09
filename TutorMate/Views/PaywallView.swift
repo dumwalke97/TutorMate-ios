@@ -10,11 +10,13 @@ struct PaywallView: View {
 
     @State private var selectedProductID = StoreManager.annualProductID
     @State private var isPurchasing = false
-    @State private var showAccountSheet = false
-    @State private var pendingPurchase = false
     @State private var errorMessage: String? = nil
+    @State private var showPostPurchaseAccountPrompt = false
 
-    /// Subscriptions are tied to an account so access can sync across devices.
+    /// True when there's no signed-in (non-anonymous) account. Purchasing
+    /// never requires one - an account is only needed afterward to sync
+    /// access across devices, which the user can set up any time from the
+    /// account menu.
     private var needsAccount: Bool {
         firebaseManager.currentUser == nil || firebaseManager.currentUser?.isAnonymous == true
     }
@@ -50,40 +52,20 @@ struct PaywallView: View {
             .toolbarBackground(.visible, for: .navigationBar)
         }
         .interactiveDismissDisabled(isPurchasing)
-        .sheet(isPresented: $showAccountSheet) {
-            LoginView(viewModel: viewModel)
-        }
-        .onChange(of: firebaseManager.currentUser?.uid) { _ in
-            // A grandfathered account already has lifetime access - never
-            // route it into a purchase.
-            if firebaseManager.isGrandfathered {
-                pendingPurchase = false
-                showAccountSheet = false
-                dismiss()
-                return
-            }
-            // Continue the purchase automatically once the user finishes
-            // creating an account - but first check Firestore for a
-            // subscription bought on the website (or another Apple Account),
-            // so nobody is ever charged twice for the same login.
-            if pendingPurchase && !needsAccount {
-                pendingPurchase = false
-                showAccountSheet = false
-                Task {
-                    if await firebaseManager.refreshRemoteSubscription() {
-                        dismiss()
-                    } else {
-                        startPurchase()
-                    }
-                }
-            }
+        .sheet(isPresented: $showPostPurchaseAccountPrompt, onDismiss: { dismiss() }) {
+            PostPurchaseAccountPrompt(
+                onCreateAccount: {
+                    viewModel.authStartAsSignUp = true
+                    viewModel.showLoginModal = true
+                },
+                onSkip: { }
+            )
+            .presentationDetents([.height(320)])
         }
         .onChange(of: firebaseManager.hasRemoteSubscription) { active in
             // The Firestore listener found an active subscription from the
             // other platform - there's nothing to sell.
             if active {
-                pendingPurchase = false
-                showAccountSheet = false
                 dismiss()
             }
         }
@@ -247,7 +229,7 @@ struct PaywallView: View {
                     ProgressView()
                         .tint(.white)
                 } else {
-                    Text(needsAccount ? "Sign Up & Subscribe" : "Subscribe")
+                    Text("Subscribe")
                 }
             }
             .font(.headline)
@@ -302,13 +284,30 @@ struct PaywallView: View {
     // MARK: - Actions
 
     private func subscribeTapped() {
-        if needsAccount {
-            pendingPurchase = true
-            viewModel.authStartAsSignUp = true
-            showAccountSheet = true
+        // A grandfathered account already has lifetime access - never
+        // route it into a purchase.
+        if firebaseManager.isGrandfathered {
+            dismiss()
             return
         }
-        startPurchase()
+        if needsAccount {
+            // No account yet: purchasing never requires signing up first.
+            startPurchase()
+            return
+        }
+        // Already signed in: check Firestore for a subscription bought on
+        // the website (or another Apple Account) first, so nobody already
+        // subscribed under this login gets charged twice.
+        isPurchasing = true
+        Task {
+            if await firebaseManager.refreshRemoteSubscription() {
+                isPurchasing = false
+                dismiss()
+            } else {
+                isPurchasing = false
+                startPurchase()
+            }
+        }
     }
 
     private func startPurchase() {
@@ -320,7 +319,14 @@ struct PaywallView: View {
                 isPurchasing = false
                 switch outcome {
                 case .success:
-                    dismiss()
+                    // Nudge an anonymous purchaser to create an account so
+                    // they don't lose access to their saved folders if they
+                    // switch devices - entirely optional, never required.
+                    if needsAccount {
+                        showPostPurchaseAccountPrompt = true
+                    } else {
+                        dismiss()
+                    }
                 case .userCancelled:
                     break
                 case .pending:
@@ -349,5 +355,65 @@ struct PaywallView: View {
                 errorMessage = error.localizedDescription
             }
         }
+    }
+}
+
+/// Optional, dismissible nudge shown after a purchase made without an
+/// account, so the subscriber can protect their saved data across devices
+/// without ever being required to sign up.
+private struct PostPurchaseAccountPrompt: View {
+    @Environment(\.dismiss) private var dismiss
+    let onCreateAccount: () -> Void
+    let onSkip: () -> Void
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 40))
+                .foregroundColor(.tmGreen)
+                .padding(.top, 12)
+
+            VStack(spacing: 8) {
+                Text("You're subscribed!")
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .foregroundColor(.tmInk)
+                Text("Create a free account to keep your subscription and saved data if you ever switch devices or reinstall.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 24)
+
+            VStack(spacing: 12) {
+                Button {
+                    onCreateAccount()
+                    dismiss()
+                } label: {
+                    Text("Create Account")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .foregroundColor(.white)
+                        .background(Color.tmNavy)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+
+                Button {
+                    onSkip()
+                    dismiss()
+                } label: {
+                    Text("Maybe Later")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.horizontal, 24)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.bottom, 16)
     }
 }

@@ -84,7 +84,7 @@ struct CustomNavigationBar: View {
                 Button {
                     viewModel.showPaywall = true
                 } label: {
-                    Text("Sign Up")
+                    Text("Upgrade")
                         .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
