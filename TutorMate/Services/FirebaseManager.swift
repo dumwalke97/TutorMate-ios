@@ -23,6 +23,14 @@ class FirebaseManager: ObservableObject {
     /// these here means nobody pays twice.
     @Published var hasRemoteSubscription = false
 
+    /// Where a remote (non-StoreKit) subscription came from, mirroring the
+    /// web app's `subscriptionSourceOf`: an explicit `subscriptionSource`
+    /// field if set (e.g. "grandfathered"), otherwise inferred as "stripe"
+    /// or "apple" from whichever status field is active. `nil` when there's
+    /// no remote subscription (a real on-device StoreKit purchase, which
+    /// this device already knows about directly, doesn't need this).
+    @Published var remoteSubscriptionSource: String?
+
     private let db = Firestore.firestore()
     private let storage = Storage.storage()
     private var userDocListener: ListenerRegistration?
@@ -72,6 +80,7 @@ class FirebaseManager: ObservableObject {
         userDocListener?.remove()
         userDocListener = nil
         hasRemoteSubscription = false
+        remoteSubscriptionSource = nil
         appleStatusInDoc = nil
         guard let userId else { return }
         userDocListener = db.collection("users").document(userId)
@@ -81,6 +90,15 @@ class FirebaseManager: ObservableObject {
                 let status = data?["subscriptionStatus"] as? String
                 let appleStatus = data?["appleSubscriptionStatus"] as? String
                 self.hasRemoteSubscription = (status == "active" || appleStatus == "active")
+                if let explicitSource = data?["subscriptionSource"] as? String {
+                    self.remoteSubscriptionSource = explicitSource
+                } else if status == "active" {
+                    self.remoteSubscriptionSource = "stripe"
+                } else if appleStatus == "active" {
+                    self.remoteSubscriptionSource = "apple"
+                } else {
+                    self.remoteSubscriptionSource = nil
+                }
 
                 let changed = appleStatus != self.appleStatusInDoc
                 self.appleStatusInDoc = appleStatus

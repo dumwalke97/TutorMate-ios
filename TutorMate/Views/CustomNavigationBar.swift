@@ -9,8 +9,33 @@ struct CustomNavigationBar: View {
     @State private var showChangeEmailAlert = false
     @State private var newEmail = ""
     @State private var showManageSubscriptions = false
+    @State private var showFoundingMemberAlert = false
+    @State private var showWebManagedAlert = false
     @State private var showDeleteAccountAlert = false
     @State private var isDeletingAccount = false
+
+    /// True for anyone with premium access, however they got it - a real
+    /// StoreKit purchase, a Firestore-mirrored subscription (Stripe on the
+    /// web, or Apple on another device), or a grandfathered account.
+    private var hasAnySubscription: Bool {
+        store.isSubscribed || firebaseManager.hasRemoteSubscription || firebaseManager.isGrandfathered
+    }
+
+    private var isGrandfatheredSource: Bool {
+        firebaseManager.isGrandfathered || firebaseManager.remoteSubscriptionSource == "grandfathered"
+    }
+
+    /// Routes "Subscription" to whichever management surface actually
+    /// applies, mirroring the web app's identical three-way branching.
+    private func manageSubscriptionTapped() {
+        if store.isSubscribed {
+            showManageSubscriptions = true
+        } else if isGrandfatheredSource {
+            showFoundingMemberAlert = true
+        } else if firebaseManager.remoteSubscriptionSource == "stripe" {
+            showWebManagedAlert = true
+        }
+    }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -47,8 +72,8 @@ struct CustomNavigationBar: View {
                             Label("Reset Password", systemImage: "key")
                         }
                     }
-                    if store.isSubscribed {
-                        Button(action: { showManageSubscriptions = true }) {
+                    if hasAnySubscription {
+                        Button(action: manageSubscriptionTapped) {
                             Label("Subscription", systemImage: "creditcard")
                         }
                     }
@@ -114,6 +139,16 @@ struct CustomNavigationBar: View {
             }
         }
         .manageSubscriptionsSheet(isPresented: $showManageSubscriptions)
+        .alert("You're a founding member!", isPresented: $showFoundingMemberAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("As one of TutorMate's original beta testers, you've been granted a free lifetime subscription, no payment required, ever. Thank you for helping us build this.")
+        }
+        .alert("Managed on the Web", isPresented: $showWebManagedAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Your TutorMate Premium subscription was purchased on tutormate.ai, so billing is handled there. To manage or cancel it, visit tutormate.ai and log in with the same account.")
+        }
         .alert("Delete Account?", isPresented: $showDeleteAccountAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Delete Account", role: .destructive) { deleteAccount() }

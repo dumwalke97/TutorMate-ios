@@ -14,6 +14,15 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.803321539283-8vj0rq1l6imv6qhk61v5887nt2sgahc7</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
@@ -24,14 +33,5 @@
 	<string>We need access to your photo library to upload worksheets and assignments.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>com.googleusercontent.apps.803321539283-8vj0rq1l6imv6qhk61v5887nt2sgahc7</string>
-			</array>
-		</dict>
-	</array>
 </dict>
 </plist>
