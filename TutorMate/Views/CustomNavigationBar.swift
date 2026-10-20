@@ -26,7 +26,16 @@ struct CustomNavigationBar: View {
     }
 
     /// Routes "Subscription" to whichever management surface actually
-    /// applies, mirroring the web app's identical three-way branching.
+    /// applies, mirroring the web app's identical branching.
+    ///
+    /// The last branch is deliberately an `else` rather than a test for
+    /// "apple": `hasAnySubscription` shows this item for anyone with
+    /// premium access, so every one of them has to land somewhere. An
+    /// Apple subscription bought on another device reaches here with
+    /// `store.isSubscribed` still false, because StoreKit resolves
+    /// `Transaction.currentEntitlements` asynchronously while the
+    /// Firestore listener answers immediately. Apple does the billing in
+    /// that case either way, so its own sheet is the honest destination.
     private func manageSubscriptionTapped() {
         if store.isSubscribed {
             showManageSubscriptions = true
@@ -34,6 +43,8 @@ struct CustomNavigationBar: View {
             showFoundingMemberAlert = true
         } else if firebaseManager.remoteSubscriptionSource == "stripe" {
             showWebManagedAlert = true
+        } else {
+            showManageSubscriptions = true
         }
     }
 
